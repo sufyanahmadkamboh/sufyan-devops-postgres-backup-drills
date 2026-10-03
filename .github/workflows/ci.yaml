@@ -1,0 +1,70 @@
+---
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  # Weekly run of the full test against the latest base images.
+  schedule:
+    - cron: "17 5 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: Static checks
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install tools
+        run: pip install pytest==9.1.1 ruff==0.16.10 yamllint==1.38.0
+      - name: ShellCheck, yamllint, ruff, pytest, hadolint, promtool, compose
+        run: scripts/lint.sh
+
+  image:
+    name: Image build and vulnerability scan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build
+        run: docker build -t pg-backup-drills:ci image
+      - name: Trivy (fail on fixable HIGH/CRITICAL)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.75.0 image \
+            --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --no-progress pg-backup-drills:ci
+
+  e2e:
+    name: End-to-end (backups, drills, PITR, outage, damage, lost key)
+    needs: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - name: Run the end-to-end test
+        run: scripts/e2e.sh
+      - name: Results
+        if: always()
+        run: test -f reports/e2e-results.md && cat reports/e2e-results.md >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Logs on failure
+        if: failure()
+        run: docker compose -f deploy/compose.yaml logs --tail 200 || true
+      - name: Keep the reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-reports
+          path: reports/
+          if-no-files-found: ignore
+      - name: Clean up
+        if: always()
+        run: scripts/down.sh --purge
