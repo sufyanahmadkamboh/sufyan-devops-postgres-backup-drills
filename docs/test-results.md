@@ -41,7 +41,17 @@ The first three:
 | 10 | Security | db and app **cannot resolve** the object store; backup host can (HTTP 200); raw backup files contain **0** readable order strings; db's pgBackRest config has **0** S3 keys/passphrases; S3 without credentials: **403** |
 | 11 | Monitoring | Prometheus has drill, verify, backup-age, archiver and stanza series; **no alerts firing** at the end |
 
-## 3. Additional measurements during development
+## 3. Same test in CI (GitHub Actions run 37093486543, ubuntu-24.04, all 11 sections passed)
+
+| Measure | CI result |
+|---|---|
+| Empty runner → first full backup | 62 s |
+| PITR after `DROP TABLE` | 108/108 orders back, in service in 17 s |
+| Storage outage | alert after 188 s, archive caught up 48 s after recovery, 0 orders missing |
+| Bit rot | `checksum invalid: 1`, drill failed with `zst error: Data corruption detected` |
+| Database volume lost | rebuilt in 20 s |
+
+## 4. Additional measurements during development
 
 These came from earlier runs on the same stack. They're kept because they show variance:
 
@@ -55,7 +65,7 @@ These came from earlier runs on the same stack. They're kept because they show v
 | Lost volume rebuilt | 16 s, 17 s |
 | An empty database started by mistake | its WAL was refused by the repository (`system-id … do not match`) |
 
-## 4. Not tested
+## 5. Not tested
 
 - **Production-size data:** the lab database is about 30 MB. Restore time grows with size, so the `RestoreTooSlow` alert (30 min) is the guard.
 - **Real cloud S3 and multi-region:** the lab uses SeaweedFS. The S3 code path in pgBackRest is the same, and moving to AWS is a configuration change ([runbook](runbook.md)).
