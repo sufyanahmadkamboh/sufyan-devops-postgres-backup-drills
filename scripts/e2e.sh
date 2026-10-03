@@ -134,7 +134,7 @@ s6() {
   local back; back=$(date +%s)
   compose start s3 >/dev/null 2>&1
   compose up -d --wait s3 >/dev/null 2>&1
-  # shellcheck disable=SC2329  # called through wait_for
+  # shellcheck disable=SC2317,SC2329  # called through wait_for
   caught_up() { (( $(sql "select extract(epoch from now() - last_archived_time)::int from pg_stat_archiver") < 90 )); }
   wait_for 300 caught_up >/dev/null || fail "WAL archiving did not recover"
   pass "WAL archiving caught up $(( $(date +%s) - back )) s after the object store came back"

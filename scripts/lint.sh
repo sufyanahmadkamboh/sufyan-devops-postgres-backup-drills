@@ -9,7 +9,7 @@ step() { printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
 
 step "ShellCheck (scripts and container scripts)"
 shellcheck -S style -x scripts/*.sh image/bin/entrypoint image/bin/init-stanza image/bin/run-backup \
-  image/bin/run-verify image/bin/restore-drill image/bin/loadgen image/bin/pushmetrics image/initdb/*.sh
+  image/bin/run-verify image/bin/restore-drill image/bin/loadgen image/bin/pushmetrics image/bin/gosu image/initdb/*.sh
 
 step "yamllint"
 yamllint --strict .

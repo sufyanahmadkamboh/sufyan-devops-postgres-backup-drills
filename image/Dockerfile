@@ -27,6 +27,9 @@ RUN curl -fsSL -o /usr/local/bin/supercronic \
 RUN install -d -o postgres -g postgres -m 0750 /var/log/pgbackrest /var/lib/pgbackrest /var/spool/pgbackrest /tmp/pgbackrest \
  && install -d -o postgres -g postgres -m 0700 /var/lib/drill
 
+# The base image's gosu binary is replaced by a setpriv shim (bin/gosu): delete it first so the old Go binary
+# is really gone from the image (an overwritten file still exists in the lower layer for scanners).
+RUN rm -f /usr/local/bin/gosu
 COPY --chmod=0755 bin/ /usr/local/bin/
 COPY --chmod=0644 crontab /etc/backup.crontab
 COPY --chmod=0755 initdb/ /docker-entrypoint-initdb.d/

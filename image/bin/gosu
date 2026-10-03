@@ -1,0 +1,10 @@
+#!/bin/sh
+# Drop-in replacement for the gosu binary shipped in the postgres base image: that binary was built with
+# an old Go runtime (Trivy: 1 CRITICAL + 21 HIGH CVEs). util-linux `setpriv` (already in Debian) does the
+# same job. Usage is unchanged: gosu USER COMMAND [ARGS...]
+set -eu
+user="$1"
+shift
+HOME="$(getent passwd "$user" | cut -d: -f6)"
+export HOME
+exec setpriv --reuid="$user" --regid="$user" --init-groups -- "$@"
