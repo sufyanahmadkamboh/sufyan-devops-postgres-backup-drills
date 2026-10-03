@@ -1,0 +1,103 @@
+---
+# The question every alert answers: "if the database died right now, could we get the data back?"
+groups:
+  - name: backups
+    rules:
+      # ---- WAL archiving: the continuous part of the backup (point-in-time recovery depends on it)
+      - alert: WalArchivingFailing
+        expr: increase(pg_stat_archiver_failed_count[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL cannot archive WAL (about {{ $value | printf \"%.0f\" }} failed attempts in 5 min)"
+          description: "New changes are not reaching the backup repository. Check the backup host and S3. Disk on the database fills up while this lasts."
+
+      - alert: WalArchivingStale
+        expr: pg_stat_archiver_last_archive_age > 600
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No WAL archived for {{ $value | humanizeDuration }}"
+          description: "archive_timeout is 60 s, so a segment should be archived at least every minute while the database is in use."
+
+      # ---- Backups
+      - alert: BackupFailed
+        expr: backup_last_run_success == 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "The last {{ $labels.type }} backup failed"
+          description: "See: docker compose logs backup. Run it again with: scripts/backup.sh {{ $labels.type }}"
+
+      - alert: BackupTooOld
+        expr: |
+          time() - max(pgbackrest_backup_last_timestamp_seconds) > 2 * 3600
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No backup of any type finished in the last {{ $value | humanizeDuration }}"
+          description: "Incremental backups run every hour. Is the scheduler on the backup host running?"
+
+      - alert: FullBackupTooOld
+        expr: time() - pgbackrest_backup_last_timestamp_seconds{type="full"} > 8 * 86400
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Newest full backup is {{ $value | humanizeDuration }} old"
+          description: "Restores get slower the more differential/incremental backups and WAL must be applied."
+
+      - alert: RepositoryUnreadable
+        expr: pgbackrest_stanza_status_code != 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "pgBackRest reports the repository is not healthy (status {{ $value }})"
+          description: "Run: docker compose exec -u postgres backup pgbackrest --stanza=main info"
+
+      - alert: BackupVerifyFailed
+        expr: backup_verify_success == 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "Repository verification found damaged or missing files"
+          description: "Some backup or WAL files no longer match their checksums. Take a new full backup and investigate the storage."
+
+      # ---- Restore drills: a backup only counts if it was restored recently
+      - alert: RestoreDrillFailed
+        expr: restore_drill_success == 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "The last restore drill FAILED: the backups may not be restorable"
+          description: "See: docker compose logs backup. Run a drill by hand: scripts/drill.sh"
+
+      - alert: RestoreDrillMissing
+        expr: time() - restore_drill_timestamp_seconds > 26 * 3600 or absent(restore_drill_timestamp_seconds)
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No restore drill in the last 26 hours"
+          description: "Untested backups are a guess. The drill runs daily at 04:00 UTC."
+
+      - alert: RestoreTooSlow
+        # The measured value comes first: `and` keeps the left-hand side's value for the summary.
+        expr: restore_drill_duration_seconds > 1800 and on(job) restore_drill_success == 1
+        labels:
+          severity: warning
+        annotations:
+          summary: "A full restore took {{ $value | humanizeDuration }} (target: 30 min)"
+          description: "The recovery time objective is at risk: take full backups more often or add process-max."
+
+      - alert: RestoreDataLossHigh
+        expr: restore_drill_data_loss_seconds > 300 and on(job) restore_drill_success == 1
+        labels:
+          severity: warning
+        annotations:
+          summary: "The drill's restored copy was {{ $value | humanizeDuration }} behind the live database"
+          description: "The recovery point objective is 5 minutes. WAL archiving may be slow or failing."

@@ -1,0 +1,185 @@
+---
+# PostgreSQL with pgBackRest backups to S3, automatic restore drills and monitoring.
+# Create the certificates and secrets first: scripts/setup.sh (or `make up`, which runs it).
+name: pg-backup-drills
+
+x-pg-image: &pg-image
+  build:
+    context: ../image
+  image: pg-backup-drills:dev
+  init: true
+  restart: unless-stopped
+
+services:
+  # S3-compatible object storage (SeaweedFS), HTTPS only. In production point S3_ENDPOINT at AWS S3 or similar.
+  s3:
+    networks: [storage]
+    image: chrislusf/seaweedfs:4.48
+    command:
+      - server
+      - -dir=/data
+      - -master.telemetry=false
+      - -s3
+      - -s3.port=8333
+      - -s3.port.https=8443
+      - -s3.cert.file=/certs/s3.crt
+      - -s3.key.file=/certs/s3.key
+      - -s3.config=/run/secrets/s3_identities
+    volumes:
+      - s3-data:/data
+      - ../.secrets/certs:/certs:ro
+    secrets: [s3_identities]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "--cacert", "/certs/ca.crt", "https://s3:8443/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 180s
+    restart: unless-stopped
+
+  # Creates the bucket once (no-op if it exists).
+  s3-init:
+    networks: [storage]
+    image: chrislusf/seaweedfs:4.48
+    entrypoint:
+      - sh
+      - -c
+      - |
+        if echo 's3.bucket.list' | weed shell -master=s3:9333 | grep -qw pgbackrest; then
+          echo "bucket pgbackrest exists"
+        else
+          echo 's3.bucket.create -name pgbackrest' | weed shell -master=s3:9333
+        fi
+    depends_on:
+      s3: {condition: service_healthy}
+    restart: "no"
+
+  db:
+    networks: [data]
+    <<: *pg-image
+    stop_signal: SIGINT
+    stop_grace_period: 2m
+    environment:
+      ROLE: db
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=pgbackrest --stanza=main archive-push %p
+      # Send a WAL segment to the backup host at least every 60 s, even when traffic is low:
+      # this bounds how much recent data a restore can lose.
+      - -c
+      - archive_timeout=60
+      - -c
+      - max_wal_senders=3
+    volumes:
+      - db-data:/var/lib/postgresql
+      - db-spool:/var/spool/pgbackrest
+      - ../.secrets/certs:/certs:ro
+    secrets: [postgres_password, app_password, monitor_password]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d shop"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+
+  # Dedicated backup host: holds the S3 credentials and the encryption passphrase (the database does not).
+  backup:
+    networks: [data, storage, monitoring]
+    <<: *pg-image
+    environment:
+      ROLE: backup
+      PUSHGATEWAY_URL: http://pushgateway:9091
+    volumes:
+      - backup-logs:/var/log/pgbackrest
+      - ../.secrets/certs:/certs:ro
+    secrets: [s3_access_key, s3_secret_key, repo_cipher_pass, monitor_password]
+    depends_on:
+      db: {condition: service_healthy}
+      s3-init: {condition: service_completed_successfully}
+      pushgateway: {condition: service_started}
+
+  # Writes orders continuously, like a real application.
+  app:
+    networks: [data]
+    <<: *pg-image
+    environment:
+      ROLE: app
+      ORDER_INTERVAL: "0.5"
+    secrets: [app_password]
+    depends_on:
+      db: {condition: service_healthy}
+
+  pushgateway:
+    networks: [monitoring]
+    image: prom/pushgateway:v1.11.3
+    restart: unless-stopped
+
+  postgres-exporter:
+    networks: [data, monitoring]
+    image: prometheuscommunity/postgres-exporter:v0.20.1
+    environment:
+      DATA_SOURCE_URI: db:5432/shop?sslmode=disable
+      DATA_SOURCE_USER: monitor
+      DATA_SOURCE_PASS_FILE: /run/secrets/monitor_password
+    secrets: [monitor_password]
+    depends_on:
+      db: {condition: service_healthy}
+    restart: unless-stopped
+
+  prometheus:
+    networks: [monitoring]
+    image: prom/prometheus:v3.15.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+    ports:
+      - "127.0.0.1:9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    networks: [monitoring]
+    image: grafana/grafana:13.2.3
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/backups.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    secrets: [grafana_admin_password]
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+
+secrets:
+  postgres_password: {file: ../.secrets/postgres_password}
+  app_password: {file: ../.secrets/app_password}
+  monitor_password: {file: ../.secrets/monitor_password}
+  s3_access_key: {file: ../.secrets/s3_access_key}
+  s3_secret_key: {file: ../.secrets/s3_secret_key}
+  s3_identities: {file: ../.secrets/s3_identities.json}
+  repo_cipher_pass: {file: ../.secrets/repo_cipher_pass}
+  grafana_admin_password: {file: ../.secrets/grafana_admin_password}
+
+# Network separation: the database and the application cannot reach the backup storage at all,
+# so a compromised database host cannot read, change or delete its own backups.
+networks:
+  data:
+  storage:
+  monitoring:
+
+volumes:
+  s3-data:
+  db-data:
+  db-spool:
+  backup-logs:
