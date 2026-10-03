@@ -62,8 +62,9 @@ done
 # Containers read these files as their own non-root users (SeaweedFS runs as `seaweed`, PostgreSQL as
 # `postgres`), so the directory must be traversable (0711: others can open known files but cannot list it).
 # The CA key is never mounted anywhere and stays private.
+# (Files only: a glob like "$S"/* would also match certs/ and strip the directory's execute bit.)
+find "$S" -type f -exec chmod 0644 {} + 2>/dev/null || true
 chmod 0711 "$S" 2>/dev/null || true
 chmod 0755 "$S/certs" 2>/dev/null || true
-chmod 0644 "$S"/* "$S"/certs/* 2>/dev/null || true
 chmod 0600 "$S/ca.key" 2>/dev/null || true
 ok "secrets and certificates are in .secrets/ (never committed)"

@@ -22,9 +22,21 @@ MinIO stopped publishing images in October 2025 and the project was archived in 
 4.48 (`weed server -s3` with HTTPS). Any S3-compatible storage or AWS S3 works with pgBackRest.
 
 **`s3` unhealthy in CI (Linux) but fine on Windows**
-SeaweedFS starts as root and then switches to the `seaweed` user. The first `setup.sh` made `.secrets/` mode
-0700, so that user could not reach its certificate; Windows does not enforce these modes, so it only failed on
-Linux. `.secrets/` is now 0711 (files can be opened, the directory cannot be listed) and only `ca.key` stays 0600.
+SeaweedFS starts as root and then switches to the `seaweed` user, which must read its certificate. Two bugs in
+`setup.sh` stopped it on Linux:
+- `.secrets/` was mode 0700.
+- `chmod 0644 "$S"/*` also matched the `certs/` directory and removed its execute bit, so no non-root process
+  could enter it.
+
+Windows does not enforce these modes, so everything passed locally.
+
+The fix:
+- `chmod` files only (`find -type f`).
+- `.secrets/` is 0711 (files can be opened, the directory cannot be listed).
+- `certs/` is 0755.
+- `ca.key` is 0600.
+
+This was verified with a non-root user in an Ubuntu container.
 
 **`s3` container "unhealthy" on first start**
 The first start creates SeaweedFS volumes and takes 1–3 minutes. The healthcheck uses `curl` with the private CA
