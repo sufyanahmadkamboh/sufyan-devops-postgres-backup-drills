@@ -229,6 +229,6 @@ s11() {
 }
 
 for n in 1 2 3 4 5 6 7 8 9 10 11; do
-  (( n >= ${E2E_FROM:-1} )) && "s$n"
+  if (( n >= ${E2E_FROM:-1} )); then "s$n"; fi   # not `cond && sN`: bash ignores set -e inside && lists
 done
 ok "All end-to-end checks passed. Results: reports/e2e-results.md"
