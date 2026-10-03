@@ -1,0 +1,119 @@
+---
+# promtool test rules tests/prometheus/backups.test.yml
+rule_files:
+  - ../../deploy/prometheus/rules/backups.yml
+
+evaluation_interval: 1m
+
+tests:
+  # WAL archiving starts failing (object store down): fires after 2 minutes of failures.
+  - interval: 1m
+    input_series:
+      - series: 'pg_stat_archiver_failed_count{job="postgres"}'
+        values: "14 14 14 15 17 19 21 23 25"
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: WalArchivingFailing
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: WalArchivingFailing
+        exp_alerts:
+          - exp_labels: {severity: critical, job: postgres}
+            exp_annotations:
+              summary: "PostgreSQL cannot archive WAL (about 9 failed attempts in 5 min)"
+              description: "New changes are not reaching the backup repository. Check the backup host and S3. Disk on the database fills up while this lasts."
+
+  # Old failures (before the backup host started) must not alert forever.
+  - interval: 1m
+    input_series:
+      - series: 'pg_stat_archiver_failed_count{job="postgres"}'
+        values: "14x20"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: WalArchivingFailing
+        exp_alerts: []
+
+  # The scheduler stopped: no backup of any type for more than 2 hours.
+  - interval: 5m
+    input_series:
+      - series: 'pgbackrest_backup_last_timestamp_seconds{type="incr"}'
+        values: "0x40"
+      - series: 'pgbackrest_backup_last_timestamp_seconds{type="full"}'
+        values: "0x40"
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: BackupTooOld
+        exp_alerts: []
+      - eval_time: 2h20m
+        alertname: BackupTooOld
+        exp_alerts:
+          - exp_labels: {severity: critical}
+            exp_annotations:
+              summary: "No backup of any type finished in the last 2h 20m 0s"
+              description: "Incremental backups run every hour. Is the scheduler on the backup host running?"
+
+  # A failed drill alerts immediately; a passing one never does.
+  - interval: 1m
+    input_series:
+      - series: 'restore_drill_success{job="restore_drill"}'
+        values: "1 1 0 0"
+      - series: 'restore_drill_timestamp_seconds{job="restore_drill"}'
+        values: "0 0 120 120"
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: RestoreDrillFailed
+        exp_alerts: []
+      - eval_time: 2m
+        alertname: RestoreDrillFailed
+        exp_alerts:
+          - exp_labels: {severity: critical, job: restore_drill}
+            exp_annotations:
+              summary: "The last restore drill FAILED: the backups may not be restorable"
+              description: "See: docker compose logs backup. Run a drill by hand: scripts/drill.sh"
+
+  # No drill for more than 26 hours (samples every 5 minutes so they never go stale).
+  - interval: 5m
+    input_series:
+      - series: 'restore_drill_timestamp_seconds{job="restore_drill"}'
+        values: "0x360"
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: RestoreDrillMissing
+        exp_alerts: []
+      - eval_time: 27h
+        alertname: RestoreDrillMissing
+        exp_alerts:
+          - exp_labels: {severity: warning, job: restore_drill}
+            exp_annotations:
+              summary: "No restore drill in the last 26 hours"
+              description: "Untested backups are a guess. The drill runs daily at 04:00 UTC."
+
+  # Damaged repository and slow / lossy drills.
+  - interval: 1m
+    input_series:
+      - series: 'backup_verify_success{job="pgbackrest_verify"}'
+        values: "1 0"
+      - series: 'restore_drill_success{job="restore_drill"}'
+        values: "1 1"
+      - series: 'restore_drill_duration_seconds{job="restore_drill"}'
+        values: "2400 2400"
+      - series: 'restore_drill_data_loss_seconds{job="restore_drill"}'
+        values: "54 54"
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: BackupVerifyFailed
+        exp_alerts:
+          - exp_labels: {severity: critical, job: pgbackrest_verify}
+            exp_annotations:
+              summary: "Repository verification found damaged or missing files"
+              description: "Some backup or WAL files no longer match their checksums. Take a new full backup and investigate the storage."
+      - eval_time: 1m
+        alertname: RestoreTooSlow
+        exp_alerts:
+          - exp_labels: {severity: warning, job: restore_drill}
+            exp_annotations:
+              summary: "A full restore took 40m 0s (target: 30 min)"
+              description: "The recovery time objective is at risk: take full backups more often or add process-max."
+      - eval_time: 1m
+        alertname: RestoreDataLossHigh
+        exp_alerts: []
