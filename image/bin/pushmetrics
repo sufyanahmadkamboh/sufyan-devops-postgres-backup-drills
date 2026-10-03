@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Sends Prometheus text-format metrics (stdin) to the Pushgateway under job=$1 [+ grouping labels].
+#   echo 'restore_drill_success 1' | pushmetrics restore_drill
+#   echo '...' | pushmetrics pgbackrest_backup type full
+# Never fails the caller: a missing Pushgateway must not break a backup.
+set -uo pipefail
+
+url="${PUSHGATEWAY_URL:-http://pushgateway:9091}/metrics/job/$1"
+shift
+while (( $# >= 2 )); do url="$url/$1/$2"; shift 2; done
+
+if ! curl -fsS --max-time 10 --data-binary @- "$url" >/dev/null; then
+  echo "pushmetrics: could not push to $url" >&2
+fi
+exit 0

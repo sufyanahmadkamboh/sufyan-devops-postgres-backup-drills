@@ -1,0 +1,11 @@
+# Backup host schedule (UTC). Every job publishes its result to Prometheus.
+# Weekly full, daily differential, hourly incremental: restore = 1 full + 1 diff + a few incr + WAL.
+0 1 * * 0     run-backup full
+0 1 * * 1-6   run-backup diff
+30 * * * *    run-backup incr
+# Read every file in the repository and check its checksum.
+0 3 * * *     run-verify
+# Restore the latest backup into a scratch copy and check it.
+0 4 * * *     restore-drill
+# Repository state (backup ages and sizes) for the dashboard and alerts.
+* * * * *     backup-metrics

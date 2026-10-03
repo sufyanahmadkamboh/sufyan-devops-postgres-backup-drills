@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""Publishes the state of the pgBackRest repository as Prometheus metrics (via the Pushgateway).
+
+Reads `pgbackrest info --output=json` (or a file given as the first argument, for tests) and pushes:
+  pgbackrest_stanza_status_code          0 = ok, anything else = problem (pgBackRest status code)
+  pgbackrest_backup_last_timestamp_seconds{type}  when the newest backup of each type finished
+  pgbackrest_backup_last_duration_seconds{type}
+  pgbackrest_backup_last_size_bytes{type}         database size covered by that backup
+  pgbackrest_backup_last_repo_delta_bytes{type}   bytes that backup added to the repository
+  pgbackrest_backup_count{type}
+  pgbackrest_repo_backup_bytes                    sum of all backups in the repository
+  pgbackrest_wal_archive_max_segment          newest archived WAL segment (as a number)
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import urllib.request
+
+TYPES = ("full", "diff", "incr")
+
+
+def load_info(path: str | None = None) -> list[dict]:
+    if path:
+        with open(path, encoding="utf-8") as handle:
+            return json.load(handle)
+    stanza = os.environ.get("PGBACKREST_STANZA", "main")
+    out = subprocess.run(["pgbackrest", f"--stanza={stanza}", "info", "--output=json"],
+                         check=True, capture_output=True, text=True).stdout
+    return json.loads(out)
+
+
+def wal_segment_number(name: str) -> int:
+    """'00000001000000020000000A' -> 2 * 256 + 10 = 522: the segment's position in the WAL stream
+    (16 MiB segments; the timeline prefix is ignored so the number stays exact as a float)."""
+    if len(name) != 24:
+        return 0
+    log, seg = int(name[8:16], 16), int(name[16:], 16)
+    return log * 0x100 + seg
+
+
+def to_metrics(info: list[dict]) -> str:
+    lines: list[str] = []
+
+    def emit(name: str, kind: str, help_text: str, samples: list[tuple[str, float]]) -> None:
+        lines.append(f"# HELP {name} {help_text}")
+        lines.append(f"# TYPE {name} {kind}")
+        for labels, value in samples:
+            lines.append(f"{name}{labels} {int(value) if float(value).is_integer() else value}")
+
+    stanza = info[0] if info else {}
+    status = stanza.get("status", {}).get("code", 99)
+    backups = stanza.get("backup", [])
+
+    newest = {t: None for t in TYPES}
+    counts = {t: 0 for t in TYPES}
+    for b in backups:  # pgBackRest lists backups oldest first
+        t = b.get("type")
+        if t in newest:
+            newest[t] = b
+            counts[t] += 1
+
+    emit("pgbackrest_stanza_status_code", "gauge", "pgBackRest stanza status (0 = ok).", [("", status)])
+    present = [t for t in TYPES if newest[t]]
+    emit("pgbackrest_backup_last_timestamp_seconds", "gauge", "When the newest backup of this type finished.",
+         [(f'{{type="{t}"}}', newest[t]["timestamp"]["stop"]) for t in present])
+    emit("pgbackrest_backup_last_duration_seconds", "gauge", "How long the newest backup of this type took.",
+         [(f'{{type="{t}"}}', newest[t]["timestamp"]["stop"] - newest[t]["timestamp"]["start"]) for t in present])
+    emit("pgbackrest_backup_last_size_bytes", "gauge", "Database size covered by the newest backup of this type.",
+         [(f'{{type="{t}"}}', newest[t]["info"]["size"]) for t in present])
+    emit("pgbackrest_backup_last_repo_delta_bytes", "gauge", "Bytes the newest backup of this type added to the repository.",
+         [(f'{{type="{t}"}}', newest[t]["info"]["repository"]["delta"]) for t in present])
+    emit("pgbackrest_backup_count", "gauge", "Backups of this type kept in the repository.",
+         [(f'{{type="{t}"}}', counts[t]) for t in TYPES])
+    emit("pgbackrest_repo_backup_bytes", "gauge", "Repository bytes used by all backups.",
+         [("", sum(b["info"]["repository"]["delta"] for b in backups))])
+    archives = stanza.get("archive", [])
+    max_wal = max((wal_segment_number(a.get("max") or "") for a in archives), default=0)
+    emit("pgbackrest_wal_archive_max_segment", "gauge", "Newest WAL segment in the repository (grows with every archived segment).",
+         [("", max_wal)])
+    return "\n".join(lines) + "\n"
+
+
+def push(text: str) -> None:
+    url = os.environ.get("PUSHGATEWAY_URL", "http://pushgateway:9091") + "/metrics/job/pgbackrest_info"
+    request = urllib.request.Request(url, data=text.encode(), method="PUT")
+    try:
+        urllib.request.urlopen(request, timeout=10).close()
+    except OSError as err:  # a missing Pushgateway must never break backups
+        print(f"backup-metrics: push failed: {err}", file=sys.stderr)
+
+
+def main(argv: list[str]) -> int:
+    if getattr(os, "geteuid", lambda: -1)() == 0 and not argv:  # run as postgres, like the other jobs
+        os.execvp("gosu", ["gosu", "postgres", sys.argv[0]])
+    try:
+        text = to_metrics(load_info(argv[0] if argv else None))
+    except (subprocess.CalledProcessError, OSError, ValueError, KeyError, IndexError) as err:
+        print(f"backup-metrics: {err}", file=sys.stderr)
+        text = to_metrics([])  # status 99: the repository could not be read
+    if argv:
+        sys.stdout.write(text)
+    else:
+        push(text)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

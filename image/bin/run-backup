@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Takes a backup (full | diff | incr) and publishes the outcome for Prometheus.
+set -uo pipefail
+[[ "$(id -u)" -eq 0 ]] && exec gosu postgres "$0" "$@"
+
+STANZA="${PGBACKREST_STANZA:-main}"
+type="${1:?usage: run-backup full|diff|incr}"
+case "$type" in full|diff|incr) ;; *) echo "unknown backup type: $type" >&2; exit 2 ;; esac
+
+start=$(date +%s)
+pgbackrest --stanza="$STANZA" --type="$type" backup
+rc=$?
+end=$(date +%s)
+
+pushmetrics pgbackrest_backup type "$type" <<EOF
+# HELP backup_last_run_success 1 if the last scheduled backup of this type succeeded.
+# TYPE backup_last_run_success gauge
+backup_last_run_success $(( rc == 0 ? 1 : 0 ))
+# HELP backup_last_run_duration_seconds How long the last backup run of this type took.
+# TYPE backup_last_run_duration_seconds gauge
+backup_last_run_duration_seconds $(( end - start ))
+# HELP backup_last_run_timestamp_seconds When the last backup run of this type finished.
+# TYPE backup_last_run_timestamp_seconds gauge
+backup_last_run_timestamp_seconds $end
+EOF
+backup-metrics
+exit "$rc"

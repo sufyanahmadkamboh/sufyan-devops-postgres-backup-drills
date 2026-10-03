@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# A tiny "shop" application: inserts an order every ORDER_INTERVAL seconds, like real traffic.
+# The orders are what the restore drills and the point-in-time recovery test check for.
+set -uo pipefail
+
+export PGHOST="${DB_HOST:-db}" PGUSER="${APP_USER:-app}" PGDATABASE="${APP_DB:-shop}"
+interval="${ORDER_INTERVAL:-0.5}"
+
+until psql -XAtqc 'select 1' >/dev/null 2>&1; do sleep 2; done
+echo "loadgen: connected to $PGHOST/$PGDATABASE, one order every ${interval}s"
+
+n=0
+while true; do
+  if psql -XAtq -v ON_ERROR_STOP=1 -c \
+      "insert into orders (customer, amount) values ('customer-' || (random() * 999)::int, round((random() * 200)::numeric, 2))" \
+      >/dev/null 2>&1; then
+    n=$(( n + 1 ))
+    (( n % 600 == 0 )) && echo "loadgen: $n orders written"
+  else
+    echo "loadgen: insert failed (database unavailable?), retrying" >&2
+    sleep 2
+  fi
+  sleep "$interval"
+done

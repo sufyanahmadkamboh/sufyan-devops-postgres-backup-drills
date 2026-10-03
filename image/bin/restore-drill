@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# Restore drill: proves the backups can really be restored, and measures how long it takes.
+#
+#  1. Note the newest order in the live database (the point we should be able to get back to).
+#  2. Restore the latest backup + all archived WAL from S3 into a scratch directory on this host.
+#  3. Start that copy as a separate PostgreSQL (port 5433, no network, no WAL archiving).
+#  4. Check it: no missing orders, how much recent data was not yet archived, no corruption (amcheck).
+#  5. Throw the copy away and publish the result for Prometheus and Grafana.
+#
+# Never touches the live database except for two read-only queries as the `monitor` user.
+set -uo pipefail
+[[ "$(id -u)" -eq 0 ]] && exec gosu postgres "$0" "$@"
+
+STANZA="${PGBACKREST_STANZA:-main}"
+CONF=/etc/pgbackrest/drill.conf
+DATA=/var/lib/drill/data
+PORT="${DRILL_PORT:-5433}"
+DB="${APP_DB:-shop}"
+export PGPASSFILE=/var/lib/pgbackrest/.pgpass
+LIVE=(psql -h "${DB_HOST:-db}" -U "${MONITOR_USER:-monitor}" -d "$DB" -XAtq -v ON_ERROR_STOP=1)
+COPY=(psql -h /var/run/postgresql -p "$PORT" -d "$DB" -XAtq -v ON_ERROR_STOP=1)
+
+log() { printf '%s [restore-drill] %s\n' "$(date -u +%FT%TZ)" "$*"; }
+
+start=$(date +%s)
+step="start"
+success=0 restored_rows=0 missing_rows=-1 data_loss_seconds=-1 amcheck_ok=0 restore_seconds=0
+
+publish() {
+  local end; end=$(date +%s)
+  pushmetrics restore_drill <<EOF
+# HELP restore_drill_success 1 if the last restore drill restored the backup and every check passed.
+# TYPE restore_drill_success gauge
+restore_drill_success $success
+# HELP restore_drill_duration_seconds Time from start of the restore until the copy was verified (measured RTO).
+# TYPE restore_drill_duration_seconds gauge
+restore_drill_duration_seconds $(( end - start ))
+# HELP restore_drill_restore_seconds Time spent copying the backup out of the repository.
+# TYPE restore_drill_restore_seconds gauge
+restore_drill_restore_seconds $restore_seconds
+# HELP restore_drill_data_loss_seconds Newest live order minus newest restored order (measured RPO; -1 = unknown).
+# TYPE restore_drill_data_loss_seconds gauge
+restore_drill_data_loss_seconds $data_loss_seconds
+# HELP restore_drill_restored_rows Orders found in the restored copy.
+# TYPE restore_drill_restored_rows gauge
+restore_drill_restored_rows $restored_rows
+# HELP restore_drill_missing_rows Orders the live database has (up to the restored point) but the copy does not.
+# TYPE restore_drill_missing_rows gauge
+restore_drill_missing_rows $missing_rows
+# HELP restore_drill_amcheck_ok 1 if amcheck found no corruption in tables and indexes of the copy.
+# TYPE restore_drill_amcheck_ok gauge
+restore_drill_amcheck_ok $amcheck_ok
+# HELP restore_drill_timestamp_seconds When the last restore drill finished.
+# TYPE restore_drill_timestamp_seconds gauge
+restore_drill_timestamp_seconds $end
+EOF
+}
+
+cleanup() {
+  pg_ctl -D "$DATA" -m immediate stop >/dev/null 2>&1 || true
+  rm -rf "$DATA"
+  publish
+  if (( success )); then log "PASSED in $(( $(date +%s) - start )) s"; else log "FAILED at step: $step"; fi
+}
+trap cleanup EXIT
+
+fail() { log "$*"; exit 1; }
+
+step="read live database"
+live_newest="$("${LIVE[@]}" -c "select coalesce(extract(epoch from max(created_at)), 0)::bigint from orders")" \
+  || fail "cannot read the live database"
+log "newest live order: $(date -u -d "@$live_newest" +%FT%TZ 2>/dev/null || echo "$live_newest")"
+
+step="restore from repository"
+rm -rf "$DATA"
+t0=$(date +%s)
+pgbackrest --config="$CONF" --stanza="$STANZA" --archive-mode=off \
+  --recovery-option="restore_command=pgbackrest --config=$CONF --stanza=$STANZA archive-get %f \"%p\"" \
+  restore || fail "pgbackrest restore failed"
+restore_seconds=$(( $(date +%s) - t0 ))
+log "files restored in ${restore_seconds} s"
+
+step="start the restored copy"
+pg_ctl -D "$DATA" -l /var/log/pgbackrest/drill-postgres.log -w -t 900 \
+  -o "-p $PORT -c listen_addresses='' -c unix_socket_directories=/var/run/postgresql -c archive_mode=off -c shared_buffers=128MB" \
+  start >/dev/null || fail "restored copy did not start (see /var/log/pgbackrest/drill-postgres.log)"
+
+step="wait for WAL replay and promotion"
+for _ in $(seq 1 900); do
+  [[ "$("${COPY[@]}" -c 'select pg_is_in_recovery()' 2>/dev/null)" == "f" ]] && break
+  sleep 1
+done
+[[ "$("${COPY[@]}" -c 'select pg_is_in_recovery()')" == "f" ]] || fail "copy never finished recovery"
+
+step="compare with the live database"
+IFS='|' read -r restored_rows restored_max_id restored_newest < <("${COPY[@]}" -c \
+  "select count(*), coalesce(max(id), 0), coalesce(extract(epoch from max(created_at)), 0)::bigint from orders") \
+  || fail "orders table missing in the copy"
+live_rows_upto="$("${LIVE[@]}" -c "select count(*) from orders where id <= $restored_max_id")" || fail "live compare failed"
+missing_rows=$(( live_rows_upto - restored_rows ))
+data_loss_seconds=$(( live_newest > restored_newest ? live_newest - restored_newest : 0 ))
+log "restored $restored_rows orders, missing $missing_rows, newest order ${data_loss_seconds} s older than live"
+
+step="corruption check (amcheck)"
+"${COPY[@]}" -c "create extension if not exists amcheck" >/dev/null || fail "amcheck not available"
+if pg_amcheck -h /var/run/postgresql -p "$PORT" --database="$DB" --heapallindexed --no-dependent-indexes >/tmp/amcheck.log 2>&1; then
+  amcheck_ok=1
+else
+  cat /tmp/amcheck.log >&2
+  fail "amcheck reported corruption"
+fi
+
+(( missing_rows == 0 )) || fail "$missing_rows orders are missing from the restored copy"
+(( restored_rows > 0 )) || fail "restored copy has no orders"
+success=1

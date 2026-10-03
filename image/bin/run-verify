@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Reads every backup and WAL file in the repository and checks it against its stored checksum:
+# finds files that were damaged or deleted in the bucket long before you need them.
+set -uo pipefail
+[[ "$(id -u)" -eq 0 ]] && exec gosu postgres "$0" "$@"
+
+STANZA="${PGBACKREST_STANZA:-main}"
+start=$(date +%s)
+out="$(pgbackrest --stanza="$STANZA" verify --output=text --verbose 2>&1)"
+rc=$?
+echo "$out"
+# Belt and braces: also fail when the summary is not "status: ok" or any problem counter is non-zero.
+if [[ $rc -eq 0 ]]; then
+  if ! grep -qx 'status: ok' <<<"$out" || grep -qE '(missing|checksum invalid|size invalid|other): [1-9]' <<<"$out"; then rc=1; fi
+fi
+end=$(date +%s)
+
+pushmetrics pgbackrest_verify <<EOF
+# HELP backup_verify_success 1 if the last full repository verification found no damaged or missing files.
+# TYPE backup_verify_success gauge
+backup_verify_success $(( rc == 0 ? 1 : 0 ))
+# HELP backup_verify_duration_seconds How long the last verification took.
+# TYPE backup_verify_duration_seconds gauge
+backup_verify_duration_seconds $(( end - start ))
+# HELP backup_verify_timestamp_seconds When the last verification finished.
+# TYPE backup_verify_timestamp_seconds gauge
+backup_verify_timestamp_seconds $end
+EOF
+exit "$rc"

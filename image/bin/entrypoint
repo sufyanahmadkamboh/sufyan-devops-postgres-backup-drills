@@ -1,0 +1,164 @@
+#!/usr/bin/env bash
+# Starts one of three roles from the same image:
+#   db      PostgreSQL (WAL archived through the backup host) + pgBackRest TLS server
+#   backup  pgBackRest TLS server + repository in S3 + scheduler for backups, verify, drills, metrics
+#   app     a small application that writes orders continuously (used to measure data loss)
+set -euo pipefail
+
+STANZA="${PGBACKREST_STANZA:-main}"
+CERTS_SRC="${CERTS_DIR:-/certs}"
+CERTS=/etc/pgbackrest/tls
+PG_PATH="${PGDATA:-/var/lib/postgresql/18/docker}"
+
+log() { printf '%s [%s] %s\n' "$(date -u +%FT%TZ)" "$ROLE" "$*"; }
+
+# Secrets arrive as files (Docker secrets).
+load_secret() {  # VAR FILE
+  if [[ -f "$2" ]]; then export "$1"="$(cat "$2")"; fi
+}
+
+repo_options() {
+  cat <<EOF
+repo1-type=s3
+repo1-path=/${STANZA}
+repo1-s3-bucket=${S3_BUCKET:-pgbackrest}
+repo1-s3-endpoint=${S3_ENDPOINT:-s3}
+repo1-storage-port=${S3_PORT:-8443}
+repo1-s3-region=${S3_REGION:-us-east-1}
+repo1-s3-uri-style=${S3_URI_STYLE:-path}
+repo1-storage-ca-file=${CERTS}/ca.crt
+repo1-s3-key=$(cat /run/secrets/s3_access_key)
+repo1-s3-key-secret=$(cat /run/secrets/s3_secret_key)
+repo1-cipher-type=aes-256-cbc
+repo1-cipher-pass=$(cat /run/secrets/repo_cipher_pass)
+repo1-retention-full=${RETENTION_FULL:-2}
+repo1-bundle=y
+repo1-block=y
+compress-type=zst
+process-max=${PROCESS_MAX:-2}
+EOF
+}
+
+render_db() {
+  cat > /etc/pgbackrest/pgbackrest.conf <<EOF
+[global]
+repo1-host=${BACKUP_HOST:-backup}
+repo1-host-type=tls
+repo1-host-ca-file=${CERTS}/ca.crt
+repo1-host-cert-file=${CERTS}/db.crt
+repo1-host-key-file=${CERTS}/db.key
+archive-async=y
+compress-type=zst
+archive-push-queue-max=${ARCHIVE_QUEUE_MAX:-4GiB}
+spool-path=/var/spool/pgbackrest
+log-level-console=warn
+log-level-file=detail
+tls-server-address=*
+tls-server-ca-file=${CERTS}/ca.crt
+tls-server-cert-file=${CERTS}/db.crt
+tls-server-key-file=${CERTS}/db.key
+tls-server-auth=${BACKUP_HOST:-backup}=${STANZA}
+
+[${STANZA}]
+pg1-path=${PG_PATH}
+EOF
+}
+
+render_backup() {
+  { echo "[global]"; repo_options; cat <<EOF
+start-fast=y
+log-level-console=info
+log-level-file=detail
+tls-server-address=*
+tls-server-ca-file=${CERTS}/ca.crt
+tls-server-cert-file=${CERTS}/backup.crt
+tls-server-key-file=${CERTS}/backup.key
+tls-server-auth=${DB_HOST:-db}=${STANZA}
+
+[${STANZA}]
+pg1-host=${DB_HOST:-db}
+pg1-host-type=tls
+pg1-host-ca-file=${CERTS}/ca.crt
+pg1-host-cert-file=${CERTS}/backup.crt
+pg1-host-key-file=${CERTS}/backup.key
+pg1-path=${PG_PATH}
+EOF
+  } > /etc/pgbackrest/pgbackrest.conf
+  # Restore drills restore into a local scratch directory, never into the real database.
+  { echo "[global]"; repo_options; cat <<EOF
+log-level-console=info
+log-level-file=off
+spool-path=/var/spool/pgbackrest
+
+[${STANZA}]
+pg1-path=/var/lib/drill/data
+pg1-port=${DRILL_PORT:-5433}
+pg1-socket-path=/var/run/postgresql
+EOF
+  } > /etc/pgbackrest/drill.conf
+}
+
+prepare_dirs() {
+  install -d -o postgres -g postgres -m 0750 /etc/pgbackrest /var/log/pgbackrest /var/spool/pgbackrest /var/lib/pgbackrest
+  # Private copy of the TLS files, readable only by postgres (the mount may have any owner/mode).
+  install -d -o postgres -g postgres -m 0700 "$CERTS"
+  local name="${CERT_NAME:-$ROLE}"   # the restore role acts as the database host
+  for f in "$CERTS_SRC"/ca.crt "$CERTS_SRC/$name".crt "$CERTS_SRC/$name".key; do
+    [[ -f "$f" ]] && install -o postgres -g postgres -m 0600 "$f" "$CERTS/"
+  done
+  install -d -o postgres -g postgres -m 0700 /var/lib/drill
+  install -d -o postgres -g postgres -m 2775 /var/run/postgresql
+}
+
+finish() {  # stop every child and exit with the code of the first one that ended
+  local rc=$?
+  trap - TERM INT EXIT
+  # SIGINT = PostgreSQL "fast" shutdown (SIGTERM would wait for every client to disconnect).
+  jobs -p | xargs -r kill -INT 2>/dev/null || true
+  wait || true
+  exit "$rc"
+}
+
+case "${ROLE:-db}" in
+  db)
+    prepare_dirs
+    render_db
+    chown postgres:postgres /etc/pgbackrest/pgbackrest.conf && chmod 0640 /etc/pgbackrest/pgbackrest.conf
+    trap finish TERM INT EXIT
+    log "starting pgBackRest TLS server"
+    gosu postgres pgbackrest server &
+    log "starting PostgreSQL"
+    docker-entrypoint.sh "$@" &
+    wait -n
+    ;;
+  backup)
+    prepare_dirs
+    render_backup
+    chown postgres:postgres /etc/pgbackrest/*.conf && chmod 0640 /etc/pgbackrest/*.conf
+    # Password the restore drill uses to compare the restored copy with the live database.
+    printf '%s:*:*:%s:%s\n' "${DB_HOST:-db}" "${MONITOR_USER:-monitor}" "$(cat /run/secrets/monitor_password)" > /var/lib/pgbackrest/.pgpass
+    chown postgres:postgres /var/lib/pgbackrest/.pgpass && chmod 0600 /var/lib/pgbackrest/.pgpass
+    trap finish TERM INT EXIT
+    log "starting pgBackRest TLS server"
+    gosu postgres pgbackrest server &
+    log "creating/checking the stanza, then starting the scheduler"
+    gosu postgres bash -c 'init-stanza && exec supercronic -passthrough-logs /etc/backup.crontab' &
+    wait -n
+    ;;
+  restore)
+    # One-off: restore the database volume in place (the db service must be stopped).
+    # Arguments go to `pgbackrest restore`, for example: --type=time "--target=2026-10-03 12:00:00+00"
+    CERT_NAME=db
+    prepare_dirs
+    render_db
+    chown postgres:postgres /etc/pgbackrest/pgbackrest.conf && chmod 0640 /etc/pgbackrest/pgbackrest.conf
+    exec gosu postgres pgbackrest --stanza="$STANZA" --delta --log-level-console=info restore "$@"
+    ;;
+  app)
+    load_secret PGPASSWORD /run/secrets/app_password
+    exec loadgen
+    ;;
+  *)
+    exec "$@"
+    ;;
+esac

@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Creates the pgBackRest stanza (idempotent), checks that WAL archiving works end to end,
+# and takes a first full backup if the repository is empty. Runs when the backup host starts.
+set -euo pipefail
+[[ "$(id -u)" -eq 0 ]] && exec gosu postgres "$0" "$@"
+
+STANZA="${PGBACKREST_STANZA:-main}"
+log() { printf '%s [init-stanza] %s\n' "$(date -u +%FT%TZ)" "$*"; }
+
+# The database and the S3 bucket may still be starting: retry for up to 5 minutes.
+for attempt in $(seq 1 60); do
+  if out="$(pgbackrest --stanza="$STANZA" stanza-create 2>&1)"; then
+    log "stanza ready"
+    break
+  fi
+  (( attempt == 60 )) && { echo "$out" >&2; log "stanza-create kept failing"; exit 1; }
+  sleep 5
+done
+
+# check = force a WAL switch on the database and wait until that WAL file is in the repository.
+pgbackrest --stanza="$STANZA" check
+log "WAL archiving works"
+
+if [[ "$(pgbackrest --stanza="$STANZA" info --output=json | python3 -c 'import json,sys; print(len(json.load(sys.stdin)[0]["backup"]))')" == 0 ]]; then
+  log "repository is empty: taking the first full backup"
+  run-backup full
+fi
+backup-metrics
