@@ -64,6 +64,10 @@ Separate roles for the application (`app`) and monitoring (`monitor`, read-only)
 - **Pinned versions:** PostgreSQL 18.6, pgBackRest 2.59.2, SeaweedFS 4.48, Prometheus, Grafana and the exporters.
 - **Checksums:** supercronic is downloaded with a SHA-256 check.
 - **Vulnerability scan:** CI scans the image with Trivy and fails on fixable HIGH/CRITICAL vulnerabilities (chapter 11).
+  The first scan failed: the official postgres image ships `gosu` (a tool that switches to another user), built with an old Go
+  runtime that had 1 CRITICAL and 21 HIGH CVEs. The image now deletes it and uses a tiny shim with the same name,
+  [`image/bin/gosu`](../image/bin/gosu), built on `setpriv` from Debian's util-linux. Lesson: a base image you didn't write
+  can still be your vulnerability, and scanning finds it.
 
 ## Where it is integrated
 

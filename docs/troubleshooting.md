@@ -11,9 +11,20 @@ If the restore fails and the `db` service is started anyway, the PostgreSQL imag
 database. pgBackRest refuses its WAL (`ArchiveMismatchError … system-id … do not match`), so the repository is
 not damaged — stop it, delete the volume, and run `scripts/recover-lost-db.sh` again.
 
+**Trivy: 1 CRITICAL + 21 HIGH in `/usr/local/bin/gosu`**
+The official postgres image ships `gosu`, built with an old Go runtime. The image now deletes it and installs
+a 5-line shim with the same interface that uses util-linux `setpriv` (`image/bin/gosu`). Overwriting the file
+was not enough: the old binary stayed in a lower image layer and Trivy still reported it, so it is deleted
+explicitly with `RUN rm` first.
+
 **MinIO image not available / outdated**
 MinIO stopped publishing images in October 2025 and the project was archived in 2026. The lab uses SeaweedFS
 4.48 (`weed server -s3` with HTTPS). Any S3-compatible storage or AWS S3 works with pgBackRest.
+
+**`s3` unhealthy in CI (Linux) but fine on Windows**
+SeaweedFS starts as root and then switches to the `seaweed` user. The first `setup.sh` made `.secrets/` mode
+0700, so that user could not reach its certificate; Windows does not enforce these modes, so it only failed on
+Linux. `.secrets/` is now 0711 (files can be opened, the directory cannot be listed) and only `ca.key` stays 0600.
 
 **`s3` container "unhealthy" on first start**
 The first start creates SeaweedFS volumes and takes 1–3 minutes. The healthcheck uses `curl` with the private CA

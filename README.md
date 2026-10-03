@@ -183,7 +183,8 @@ See [docs/test-results.md](docs/test-results.md) for every number with its conte
 - **Secrets:**
   - They are generated per installation into `.secrets/` (git-ignored) and mounted as Docker secrets.
   - Inside containers they are copied to files only the `postgres` user can read.
-- **Pinned and verified tools:** pgBackRest is pinned to an exact version, supercronic is SHA-256 verified, and the image is scanned by Trivy in CI.
+- **Pinned and verified tools:** pgBackRest is pinned to an exact version, supercronic is SHA-256 verified, and the image is scanned by Trivy in CI (0 fixable HIGH/CRITICAL).
+- **No vulnerable binary from the base image:** the base image's `gosu` binary (an old Go runtime with 1 CRITICAL and 21 HIGH CVEs) is replaced by a `setpriv` shim.
 - **The lost-key scenario is tested.** Keep the passphrase in a password manager or vault outside the server.
 
 ## 14. Troubleshooting

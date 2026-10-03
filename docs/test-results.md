@@ -17,8 +17,10 @@ The end-to-end results below come from **one clean run of all 11 sections** (`sc
 | hadolint (Dockerfile, failure threshold: warning) | 0 findings (DL3008 ignored on purpose, documented inline) |
 | promtool `check config` / `check rules` | valid / 11 rules |
 | promtool `test rules` (6 test groups) | SUCCESS |
+| Trivy (HIGH/CRITICAL, fixable) | 0 after replacing the base image's `gosu` (was 1 CRITICAL + 21 HIGH) |
 
-The unit and rule tests found 3 real bugs:
+The unit, rule and image tests found 4 real problems (the fourth: the vulnerable `gosu` binary above).
+The first three:
 - **Precision:** the WAL segment metric lost precision (the timeline was shifted into bits beyond what a float holds exactly).
 - **`RestoreTooSlow`:** its summary showed the wrong value. `and` keeps the left-hand value.
 - **`WalArchivingFailing`:** it printed fractional failure counts.
