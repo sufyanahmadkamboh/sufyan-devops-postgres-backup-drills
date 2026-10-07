@@ -218,9 +218,12 @@ s10() {
 
 s11() {
   section "11. Monitoring"
+  # shellcheck disable=SC2317,SC2329  # called through wait_for
+  has_series() { [[ -n "$(prom_query "$1")" ]]; }
   for q in 'restore_drill_success' 'backup_verify_success' 'pgbackrest_backup_last_timestamp_seconds{type="full"}' \
            'pg_stat_archiver_archived_count' 'pgbackrest_stanza_status_code'; do
-    [[ -n "$(prom_query "$q")" ]] || fail "Prometheus has no series for $q"
+    # Section 9 recreated the database: give postgres-exporter time to reconnect and Prometheus to scrape it.
+    wait_for 120 has_series "$q" >/dev/null || fail "Prometheus has no series for $q"
     pass "Prometheus has $q"
   done
   local firing_now; firing_now="$(prom_query 'ALERTS{alertstate="firing"}' | awk '{print $1}' | sort -u | paste -sd, -)"
