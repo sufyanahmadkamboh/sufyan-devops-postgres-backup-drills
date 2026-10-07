@@ -1,0 +1,145 @@
+[
+ {
+  "id": "p01",
+  "voice": "Steve",
+  "settings": {
+   "model": "mtl_tts",
+   "exaggeration": 0.65,
+   "cfg_weight": 0.4,
+   "seed": 3000
+  },
+  "tts": "Someone dropped the orders table in production. Ten seconds later, every order was back."
+ },
+ {
+  "id": "p02",
+  "voice": "Steve",
+  "settings": {
+   "model": "mtl_tts",
+   "exaggeration": 0.65,
+   "cfg_weight": 0.4,
+   "seed": 3000
+  },
+  "tts": "All one hundred and twenty-three of them."
+ },
+ {
+  "id": "p03",
+  "voice": "Steve",
+  "settings": {
+   "model": "mtl_tts",
+   "exaggeration": 0.65,
+   "cfg_weight": 0.4,
+   "seed": 3000
+  },
+  "tts": "Here's the problem. Most teams have backups. Almost nobody knows if they actually restore."
+ },
+ {
+  "id": "p04",
+  "voice": "Steve",
+  "settings": {
+   "model": "mtl_tts",
+   "exaggeration": 0.65,
+   "cfg_weight": 0.4,
+   "seed": 3000
+  },
+  "tts": "Backup jobs fail silently. Files rot. Encryption keys get lost."
+ },
+ {
+  "id": "p05",
+  "voice": "Steve",
+  "settings": {
+   "model": "mtl_tts",
+   "exaggeration": 0.65,
+   "cfg_weight": 0.4,
+   "seed": 3000
+  },
+  "tts": "So this database proves it, every single day."
+ },
+ {
+  "id": "p06",
+  "voice": "Steve",
+  "settings": {
+   "model": "mtl_tts",
+   "exaggeration": 0.65,
+   "cfg_weight": 0.4,
+   "seed": 3000
+  },
+  "tts": "Every change is archived to S-three, within a minute."
+ },
+ {
+  "id": "p07",
+  "voice": "Steve",
+  "settings": {
+   "model": "mtl_tts",
+   "exaggeration": 0.65,
+   "cfg_weight": 0.4,
+   "seed": 3000
+  },
+  "tts": "Every morning, it restores the latest backup into a copy, checks every order, and scans for corruption."
+ },
+ {
+  "id": "p08",
+  "voice": "Steve",
+  "settings": {
+   "model": "mtl_tts",
+   "exaggeration": 0.65,
+   "cfg_weight": 0.4,
+   "seed": 3000
+  },
+  "tts": "Six seconds. Zero missing orders."
+ },
+ {
+  "id": "p09",
+  "voice": "Steve",
+  "settings": {
+   "model": "mtl_tts",
+   "exaggeration": 0.65,
+   "cfg_weight": 0.4,
+   "seed": 3000
+  },
+  "tts": "Then I broke it on purpose. I overwrote four kilobytes inside one backup file. Same size. Nothing looks wrong."
+ },
+ {
+  "id": "p10",
+  "voice": "Steve",
+  "settings": {
+   "model": "mtl_tts",
+   "exaggeration": 0.65,
+   "cfg_weight": 0.4,
+   "seed": 3000
+  },
+  "tts": "The nightly check caught it, and two alerts fired."
+ },
+ {
+  "id": "p11",
+  "voice": "Steve",
+  "settings": {
+   "model": "mtl_tts",
+   "exaggeration": 0.65,
+   "cfg_weight": 0.4,
+   "seed": 3000
+  },
+  "tts": "Storage down for three and a half minutes? Zero orders lost."
+ },
+ {
+  "id": "p12",
+  "voice": "Steve",
+  "settings": {
+   "model": "mtl_tts",
+   "exaggeration": 0.65,
+   "cfg_weight": 0.4,
+   "seed": 3000
+  },
+  "tts": "The whole database disk deleted? Rebuilt from backups in sixteen seconds."
+ },
+ {
+  "id": "p13",
+  "voice": "Steve",
+  "settings": {
+   "model": "mtl_tts",
+   "exaggeration": 0.65,
+   "cfg_weight": 0.4,
+   "seed": 3000
+  },
+  "tts": "The full project is free. Follow, and I'll show you how to build it."
+ }
+]

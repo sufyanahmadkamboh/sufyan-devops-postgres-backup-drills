@@ -1,0 +1,753 @@
+{
+ "p01": [
+  {
+   "w": "someone",
+   "start": 0.0,
+   "end": 0.38
+  },
+  {
+   "w": "dropped",
+   "start": 0.38,
+   "end": 0.74
+  },
+  {
+   "w": "the",
+   "start": 0.74,
+   "end": 1.0
+  },
+  {
+   "w": "orders",
+   "start": 1.0,
+   "end": 1.22
+  },
+  {
+   "w": "table",
+   "start": 1.22,
+   "end": 1.54
+  },
+  {
+   "w": "in",
+   "start": 1.54,
+   "end": 1.76
+  },
+  {
+   "w": "production.",
+   "start": 1.76,
+   "end": 2.14
+  },
+  {
+   "w": "10",
+   "start": 2.92,
+   "end": 3.08
+  },
+  {
+   "w": "seconds",
+   "start": 3.08,
+   "end": 3.42
+  },
+  {
+   "w": "later,",
+   "start": 3.42,
+   "end": 3.78
+  },
+  {
+   "w": "every",
+   "start": 4.2,
+   "end": 4.44
+  },
+  {
+   "w": "order",
+   "start": 4.44,
+   "end": 4.72
+  },
+  {
+   "w": "was",
+   "start": 4.72,
+   "end": 4.96
+  },
+  {
+   "w": "back.",
+   "start": 4.96,
+   "end": 5.24
+  }
+ ],
+ "p02": [
+  {
+   "w": "all",
+   "start": 0.0,
+   "end": 0.2
+  },
+  {
+   "w": "123",
+   "start": 0.2,
+   "end": 0.92
+  },
+  {
+   "w": "of",
+   "start": 0.92,
+   "end": 1.34
+  },
+  {
+   "w": "them.",
+   "start": 1.34,
+   "end": 1.48
+  }
+ ],
+ "p03": [
+  {
+   "w": "Here's",
+   "start": 0.0,
+   "end": 0.22
+  },
+  {
+   "w": "the",
+   "start": 0.22,
+   "end": 0.32
+  },
+  {
+   "w": "problem.",
+   "start": 0.32,
+   "end": 0.64
+  },
+  {
+   "w": "Most",
+   "start": 1.2,
+   "end": 1.34
+  },
+  {
+   "w": "teams",
+   "start": 1.34,
+   "end": 1.64
+  },
+  {
+   "w": "have",
+   "start": 1.64,
+   "end": 1.9
+  },
+  {
+   "w": "backups.",
+   "start": 1.9,
+   "end": 2.34
+  },
+  {
+   "w": "Almost",
+   "start": 2.92,
+   "end": 3.06
+  },
+  {
+   "w": "nobody",
+   "start": 3.06,
+   "end": 3.5
+  },
+  {
+   "w": "knows",
+   "start": 3.5,
+   "end": 3.78
+  },
+  {
+   "w": "if",
+   "start": 3.78,
+   "end": 4.0
+  },
+  {
+   "w": "they",
+   "start": 4.0,
+   "end": 4.12
+  },
+  {
+   "w": "actually",
+   "start": 4.12,
+   "end": 4.42
+  },
+  {
+   "w": "restore.",
+   "start": 4.42,
+   "end": 4.8
+  }
+ ],
+ "p04": [
+  {
+   "w": "Backup",
+   "start": 0.0,
+   "end": 0.28
+  },
+  {
+   "w": "jobs",
+   "start": 0.28,
+   "end": 0.7
+  },
+  {
+   "w": "fail",
+   "start": 0.7,
+   "end": 0.98
+  },
+  {
+   "w": "silently.",
+   "start": 0.98,
+   "end": 1.6
+  },
+  {
+   "w": "Files",
+   "start": 2.18,
+   "end": 2.22
+  },
+  {
+   "w": "rot.",
+   "start": 2.22,
+   "end": 2.58
+  },
+  {
+   "w": "Encryption",
+   "start": 3.1,
+   "end": 3.42
+  },
+  {
+   "w": "keys",
+   "start": 3.42,
+   "end": 3.72
+  },
+  {
+   "w": "get",
+   "start": 3.72,
+   "end": 3.94
+  },
+  {
+   "w": "lost.",
+   "start": 3.94,
+   "end": 4.28
+  }
+ ],
+ "p05": [
+  {
+   "w": "so",
+   "start": 0.0,
+   "end": 0.16
+  },
+  {
+   "w": "this",
+   "start": 0.16,
+   "end": 0.56
+  },
+  {
+   "w": "database",
+   "start": 0.56,
+   "end": 1.04
+  },
+  {
+   "w": "proves",
+   "start": 1.04,
+   "end": 1.5
+  },
+  {
+   "w": "it",
+   "start": 1.5,
+   "end": 1.92
+  },
+  {
+   "w": "every",
+   "start": 1.92,
+   "end": 2.52
+  },
+  {
+   "w": "single",
+   "start": 2.52,
+   "end": 2.82
+  },
+  {
+   "w": "day.",
+   "start": 2.82,
+   "end": 3.16
+  }
+ ],
+ "p06": [
+  {
+   "w": "every",
+   "start": 0.0,
+   "end": 0.3
+  },
+  {
+   "w": "change",
+   "start": 0.3,
+   "end": 0.64
+  },
+  {
+   "w": "is",
+   "start": 0.64,
+   "end": 0.88
+  },
+  {
+   "w": "archived",
+   "start": 0.88,
+   "end": 1.36
+  },
+  {
+   "w": "to",
+   "start": 1.36,
+   "end": 1.74
+  },
+  {
+   "w": "S3",
+   "start": 1.74,
+   "end": 2.34
+  },
+  {
+   "w": "within",
+   "start": 2.34,
+   "end": 2.84
+  },
+  {
+   "w": "a",
+   "start": 2.84,
+   "end": 3.04
+  },
+  {
+   "w": "minute.",
+   "start": 3.04,
+   "end": 3.18
+  }
+ ],
+ "p07": [
+  {
+   "w": "Every",
+   "start": 0.0,
+   "end": 0.3
+  },
+  {
+   "w": "morning,",
+   "start": 0.3,
+   "end": 0.64
+  },
+  {
+   "w": "it",
+   "start": 0.88,
+   "end": 0.98
+  },
+  {
+   "w": "restores",
+   "start": 0.98,
+   "end": 1.32
+  },
+  {
+   "w": "the",
+   "start": 1.32,
+   "end": 1.58
+  },
+  {
+   "w": "latest",
+   "start": 1.58,
+   "end": 1.88
+  },
+  {
+   "w": "backup",
+   "start": 1.88,
+   "end": 2.34
+  },
+  {
+   "w": "into",
+   "start": 2.34,
+   "end": 2.68
+  },
+  {
+   "w": "a",
+   "start": 2.68,
+   "end": 2.86
+  },
+  {
+   "w": "copy,",
+   "start": 2.86,
+   "end": 3.16
+  },
+  {
+   "w": "checks",
+   "start": 3.64,
+   "end": 3.94
+  },
+  {
+   "w": "every",
+   "start": 3.94,
+   "end": 4.24
+  },
+  {
+   "w": "order,",
+   "start": 4.24,
+   "end": 4.54
+  },
+  {
+   "w": "and",
+   "start": 4.88,
+   "end": 5.08
+  },
+  {
+   "w": "scans",
+   "start": 5.08,
+   "end": 5.42
+  },
+  {
+   "w": "for",
+   "start": 5.42,
+   "end": 5.72
+  },
+  {
+   "w": "corruption.",
+   "start": 5.72,
+   "end": 6.04
+  }
+ ],
+ "p08": [
+  {
+   "w": "6",
+   "start": 0.0,
+   "end": 0.4
+  },
+  {
+   "w": "seconds.",
+   "start": 0.4,
+   "end": 0.82
+  },
+  {
+   "w": "0",
+   "start": 1.42,
+   "end": 1.68
+  },
+  {
+   "w": "missing",
+   "start": 1.68,
+   "end": 1.98
+  },
+  {
+   "w": "orders.",
+   "start": 1.98,
+   "end": 2.48
+  }
+ ],
+ "p09": [
+  {
+   "w": "Then",
+   "start": 0.0,
+   "end": 0.18
+  },
+  {
+   "w": "I",
+   "start": 0.18,
+   "end": 0.3
+  },
+  {
+   "w": "broke",
+   "start": 0.3,
+   "end": 0.44
+  },
+  {
+   "w": "it",
+   "start": 0.44,
+   "end": 0.58
+  },
+  {
+   "w": "on",
+   "start": 0.58,
+   "end": 0.7
+  },
+  {
+   "w": "purpose.",
+   "start": 0.7,
+   "end": 1.0
+  },
+  {
+   "w": "I",
+   "start": 1.68,
+   "end": 1.76
+  },
+  {
+   "w": "overwrote",
+   "start": 1.76,
+   "end": 2.1
+  },
+  {
+   "w": "four",
+   "start": 2.1,
+   "end": 2.4
+  },
+  {
+   "w": "kilobytes",
+   "start": 2.4,
+   "end": 2.94
+  },
+  {
+   "w": "inside",
+   "start": 2.94,
+   "end": 3.3
+  },
+  {
+   "w": "one",
+   "start": 3.3,
+   "end": 3.7
+  },
+  {
+   "w": "backup",
+   "start": 3.7,
+   "end": 4.02
+  },
+  {
+   "w": "file,",
+   "start": 4.02,
+   "end": 4.44
+  },
+  {
+   "w": "same",
+   "start": 4.78,
+   "end": 5.0
+  },
+  {
+   "w": "size,",
+   "start": 5.0,
+   "end": 5.44
+  },
+  {
+   "w": "nothing",
+   "start": 5.92,
+   "end": 6.12
+  },
+  {
+   "w": "looked",
+   "start": 6.12,
+   "end": 6.4
+  },
+  {
+   "w": "wrong.",
+   "start": 6.4,
+   "end": 6.66
+  }
+ ],
+ "p10": [
+  {
+   "w": "The",
+   "start": 0.0,
+   "end": 0.14
+  },
+  {
+   "w": "nightly",
+   "start": 0.14,
+   "end": 0.38
+  },
+  {
+   "w": "check",
+   "start": 0.38,
+   "end": 0.68
+  },
+  {
+   "w": "caught",
+   "start": 0.68,
+   "end": 0.98
+  },
+  {
+   "w": "it,",
+   "start": 0.98,
+   "end": 1.2
+  },
+  {
+   "w": "and",
+   "start": 1.44,
+   "end": 1.54
+  },
+  {
+   "w": "two",
+   "start": 1.54,
+   "end": 1.76
+  },
+  {
+   "w": "alerts",
+   "start": 1.76,
+   "end": 2.08
+  },
+  {
+   "w": "fired.",
+   "start": 2.08,
+   "end": 2.46
+  }
+ ],
+ "p11": [
+  {
+   "w": "Storage",
+   "start": 0.0,
+   "end": 0.34
+  },
+  {
+   "w": "down",
+   "start": 0.34,
+   "end": 0.62
+  },
+  {
+   "w": "for",
+   "start": 0.62,
+   "end": 0.86
+  },
+  {
+   "w": "three",
+   "start": 0.86,
+   "end": 1.04
+  },
+  {
+   "w": "and",
+   "start": 1.04,
+   "end": 1.14
+  },
+  {
+   "w": "a",
+   "start": 1.14,
+   "end": 1.16
+  },
+  {
+   "w": "half",
+   "start": 1.16,
+   "end": 1.3
+  },
+  {
+   "w": "minutes,",
+   "start": 1.3,
+   "end": 1.66
+  },
+  {
+   "w": "zero",
+   "start": 2.5,
+   "end": 2.64
+  },
+  {
+   "w": "orders",
+   "start": 2.64,
+   "end": 3.02
+  },
+  {
+   "w": "lost.",
+   "start": 3.02,
+   "end": 3.4
+  }
+ ],
+ "p12": [
+  {
+   "w": "the",
+   "start": 0.0,
+   "end": 0.1
+  },
+  {
+   "w": "whole",
+   "start": 0.1,
+   "end": 0.36
+  },
+  {
+   "w": "database",
+   "start": 0.36,
+   "end": 0.78
+  },
+  {
+   "w": "disk",
+   "start": 0.78,
+   "end": 1.08
+  },
+  {
+   "w": "deleted,",
+   "start": 1.08,
+   "end": 1.58
+  },
+  {
+   "w": "rebuilt",
+   "start": 2.12,
+   "end": 2.3
+  },
+  {
+   "w": "from",
+   "start": 2.3,
+   "end": 2.56
+  },
+  {
+   "w": "backups",
+   "start": 2.56,
+   "end": 2.9
+  },
+  {
+   "w": "in",
+   "start": 2.9,
+   "end": 3.16
+  },
+  {
+   "w": "16",
+   "start": 3.16,
+   "end": 3.54
+  },
+  {
+   "w": "seconds.",
+   "start": 3.54,
+   "end": 3.84
+  }
+ ],
+ "p13": [
+  {
+   "w": "the",
+   "start": 0.0,
+   "end": 0.14
+  },
+  {
+   "w": "full",
+   "start": 0.14,
+   "end": 0.32
+  },
+  {
+   "w": "project",
+   "start": 0.32,
+   "end": 0.7
+  },
+  {
+   "w": "is",
+   "start": 0.7,
+   "end": 1.06
+  },
+  {
+   "w": "free.",
+   "start": 1.06,
+   "end": 1.42
+  },
+  {
+   "w": "Follow,",
+   "start": 1.8,
+   "end": 2.12
+  },
+  {
+   "w": "and",
+   "start": 2.54,
+   "end": 2.68
+  },
+  {
+   "w": "I'll",
+   "start": 2.68,
+   "end": 2.86
+  },
+  {
+   "w": "show",
+   "start": 2.86,
+   "end": 3.02
+  },
+  {
+   "w": "you",
+   "start": 3.02,
+   "end": 3.16
+  },
+  {
+   "w": "how",
+   "start": 3.16,
+   "end": 3.3
+  },
+  {
+   "w": "to",
+   "start": 3.3,
+   "end": 3.42
+  },
+  {
+   "w": "build",
+   "start": 3.42,
+   "end": 3.56
+  },
+  {
+   "w": "it.",
+   "start": 3.56,
+   "end": 3.76
+  }
+ ]
+}

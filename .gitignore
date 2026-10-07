@@ -9,3 +9,5 @@ __pycache__/
 
 # Video build output
 video/out/
+video/short/page.html
+video/short/__pycache__/
