@@ -634,7 +634,7 @@
   "who": "narrator",
   "voice": "Steve",
   "text": "Moving to production is a configuration change. Point the S3 endpoint at your AWS region, use port 443 and host style addressing, and remove the lab's storage container.",
-  "tts": "Moving to production is a configuration change. Point the S-three endpoint at your A-W-S region, use port 443 and host style addressing, and remove the lab's storage container."
+  "tts": "Moving to production is a configuration change. Point the S-three endpoint at your A-W-S region, use port four four three and host style addressing, and remove the lab's storage container."
  },
  {
   "id": "s21_01",

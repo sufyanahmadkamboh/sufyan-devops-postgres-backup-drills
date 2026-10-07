@@ -859,125 +859,125 @@ The whole proof, with every disaster, is scripts slash E-2-E dot S-H, about fift
 And down dot S-H stops everything.
 
 216
-00:14:23,933 --> 00:14:26,886
+00:14:23,933 --> 00:14:26,807
 Moving to production is a configuration change.
 
 217
-00:14:26,886 --> 00:14:29,461
+00:14:26,807 --> 00:14:29,313
 Point the S3 endpoint at your AWS region,
 
 218
-00:14:29,461 --> 00:14:34,423
+00:14:29,313 --> 00:14:34,143
 use port 443 and host style addressing, and remove the lab's storage container.
 
 219
-00:14:34,967 --> 00:14:40,357
+00:14:34,700 --> 00:14:40,090
 Put the IAM keys into the secrets folder, or better, let pgBackRest use an instance role.
 
 220
-00:14:40,900 --> 00:14:46,420
+00:14:40,633 --> 00:14:46,153
 Protect the bucket with Object Lock or versioning, so deleted or overwritten backups can be recovered.
 
 221
-00:14:46,967 --> 00:14:51,847
+00:14:46,700 --> 00:14:51,581
 Keep the encryption passphrase in a password manager or a vault, outside the server.
 
 222
-00:14:51,847 --> 00:14:53,707
+00:14:51,581 --> 00:14:53,440
 You saw what happens without it.
 
 223
-00:14:54,267 --> 00:14:56,580
+00:14:54,000 --> 00:14:56,313
 And route the alerts to your on call channel.
 
 224
-00:14:56,580 --> 00:15:00,487
+00:14:56,313 --> 00:15:00,220
 The drill result on the dashboard is the first thing to check every morning.
 
 225
-00:15:02,233 --> 00:15:04,121
+00:15:01,967 --> 00:15:03,854
 Let us be honest about the limits.
 
 226
-00:15:04,121 --> 00:15:05,953
+00:15:03,854 --> 00:15:05,686
 This is a single database server.
 
 227
-00:15:05,953 --> 00:15:09,783
+00:15:05,686 --> 00:15:09,517
 High availability, with replicas and failover, is a separate concern.
 
 228
-00:15:10,333 --> 00:15:13,063
+00:15:10,067 --> 00:15:12,797
 The lab's object storage is one container.
 
 229
-00:15:13,063 --> 00:15:18,133
+00:15:12,797 --> 00:15:17,867
 Production needs durable storage, ideally off site and versioned or immutable.
 
 230
-00:15:18,667 --> 00:15:21,145
+00:15:18,400 --> 00:15:20,878
 The drill restores onto the backup host.
 
 231
-00:15:21,145 --> 00:15:25,977
+00:15:20,878 --> 00:15:25,710
 For very large databases, run it on a dedicated drill server with enough disk.
 
 232
-00:15:26,533 --> 00:15:27,802
+00:15:26,267 --> 00:15:27,535
 And next on the list:
 
 233
-00:15:27,802 --> 00:15:31,668
+00:15:27,535 --> 00:15:31,402
 a second repository in another region for three two one backups,
 
 234
-00:15:31,668 --> 00:15:38,253
+00:15:31,402 --> 00:15:37,987
 Object Lock, alert routing with Alertmanager, and a Kubernetes version with CloudNativePG and the same drill.
 
 235
-00:15:40,000 --> 00:15:41,195
+00:15:39,733 --> 00:15:40,929
 That is the project.
 
 236
-00:15:41,195 --> 00:15:44,064
+00:15:40,929 --> 00:15:43,797
 A backup is only real once it has been restored,
 
 237
-00:15:44,064 --> 00:15:46,753
+00:15:43,797 --> 00:15:46,486
 and this setup restores one every single day,
 
 238
-00:15:46,753 --> 00:15:52,370
+00:15:46,486 --> 00:15:52,103
 measures how long it takes and how much data it would lose, and alerts when anything is wrong.
 
 239
-00:15:52,933 --> 00:15:56,011
+00:15:52,667 --> 00:15:55,745
 The code, the documentation and a free study guide,
 
 240
-00:15:56,011 --> 00:16:00,477
+00:15:55,745 --> 00:16:00,211
 with hands-on labs and interview questions, are linked in the description.
 
 241
-00:16:00,477 --> 00:16:03,253
+00:16:00,211 --> 00:16:02,987
 Clone it, run up dot S-H, and try to break it.
 
 242
-00:16:03,800 --> 00:16:05,533
+00:16:03,533 --> 00:16:05,267
 Now I would like to hear from you:
 
 243
-00:16:05,533 --> 00:16:07,878
+00:16:05,267 --> 00:16:07,612
 when did you last restore one of your backups?
 
 244
-00:16:07,878 --> 00:16:09,102
+00:16:07,612 --> 00:16:08,835
 Tell me in the comments.
 
 245
-00:16:09,102 --> 00:16:12,160
+00:16:08,835 --> 00:16:11,894
 And if this helped, subscribe for more real DevOps projects.
 
 246
-00:16:12,160 --> 00:16:13,180
+00:16:11,894 --> 00:16:12,913
 Thanks for watching.
