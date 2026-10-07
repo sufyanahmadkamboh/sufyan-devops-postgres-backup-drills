@@ -1,1 +1,0 @@
-#DevOps #PostgreSQL #DisasterRecovery #Backup #SRE #DatabaseReliability #Docker #Prometheus #Grafana #LearningDevOps

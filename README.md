@@ -105,7 +105,6 @@ scripts/          setup (secrets + certs) · up · down · backup · drill · ve
 tests/            pytest for the metrics exporter (real pgBackRest JSON fixture) · promtool tests for every alert
 docs/             architecture · runbook · troubleshooting · test-results
 study/            beginner study guide (+ PDF)
-linkedin/         post, carousel, project image
 ```
 
 ## 7. Prerequisites

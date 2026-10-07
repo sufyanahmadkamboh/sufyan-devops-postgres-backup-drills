@@ -1,5 +1,7 @@
 # Video tutorial
 
+> The YouTube upload package (`youtube/`) is written by the build and kept locally; it is not published in this repository.
+
 A 16-minute explainer of this project, built entirely from code: every frame is an HTML scene rendered by a headless browser,
 the voiceover is a recorded AI voice (SpeakSay), and ffmpeg assembles the result. There is no music: the soundtrack
 is the voice plus a few short sound effects.
