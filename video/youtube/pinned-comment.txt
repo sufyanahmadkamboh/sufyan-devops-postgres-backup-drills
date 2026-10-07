@@ -1,0 +1,3 @@
+📚 Free study guide with hands-on labs and interview questions: https://github.com/sufyanahmadkamboh/sufyan-devops-postgres-backup-drills/tree/main/study
+🧪 Want to try it yourself? Jump to the "Run it yourself" chapter: scripts/up.sh, then drop a table and undo it with scripts/pitr.sh.
+Which disaster surprised you most? For me it is bit rot: same file size, nothing looks wrong, and only the checksum verification catches it.

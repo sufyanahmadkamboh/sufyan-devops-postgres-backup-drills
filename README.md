@@ -12,6 +12,8 @@ Most teams *have* backups. Far fewer know that their backups **restore**. This p
 
 > 📚 **New to DevOps or databases? Start with the [study guide](study/README.md)** (also a single **[PDF](study/study-guide.pdf)**). It explains PostgreSQL, WAL and point-in-time recovery, pgBackRest, S3, restore drills, Docker Compose, Prometheus and Grafana from zero, with hands-on labs and interview questions.
 
+> 🎬 **Prefer video?** A 16-minute walkthrough of WAL and point-in-time recovery, the architecture, the daily restore drill, five measured disasters, a hands-on lab on your laptop and the move to AWS S3 is built from code in [video/](video/README.md), with the YouTube upload package (description, chapters, captions, thumbnail).
+
 **Measured in the lab** (details: [docs/test-results.md](docs/test-results.md)):
 
 | What was tested | Result |

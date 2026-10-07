@@ -1,0 +1,716 @@
+[
+ {
+  "id": "s00_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Most teams have backups. Far fewer know that their backups actually restore.",
+  "tts": "Most teams have backups. Far fewer know that their backups actually restore."
+ },
+ {
+  "id": "s00_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Then one day someone runs drop table orders on the production database, at five past two in the afternoon.",
+  "tts": "Then one day someone runs drop table orders on the production database, at five past two in the afternoon."
+ },
+ {
+  "id": "s00_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "And during the incident the team finds out that the backup job had been failing for weeks, or the files are corrupt, or the encryption key is gone. Or the newest backup is from last night, so a whole day of orders is lost.",
+  "tts": "And during the incident the team finds out that the backup job had been failing for weeks, or the files are corrupt, or the encryption key is gone. Or the newest backup is from last night, so a whole day of orders is lost."
+ },
+ {
+  "id": "s00_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "In this video I will show you a PostgreSQL setup that proves, every single day, that its backups restore. It archives every change within a minute, restores a copy every day and checks it, and alerts when anything is wrong.",
+  "tts": "In this video I will show you a Postgres setup that proves, every single day, that its backups restore. It archives every change within a minute, restores a copy every day and checks it, and alerts when anything is wrong."
+ },
+ {
+  "id": "s00_04",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "And it is all measured. A dropped table is undone in ten seconds, with all 123 orders from before the accident back, and a silently damaged backup file is caught before anyone needs it. The code and a free study guide are linked in the description.",
+  "tts": "And it is all measured. A dropped table is undone in ten seconds, with all one hundred and twenty-three orders from before the accident back, and a silently damaged backup file is caught before anyone needs it. The code and a free study guide are linked in the description."
+ },
+ {
+  "id": "s01_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Here is the plan. First the problem, and the one idea that makes point in time recovery possible: the write ahead log.",
+  "tts": "Here is the plan. First the problem, and the one idea that makes point in time recovery possible: the write ahead log."
+ },
+ {
+  "id": "s01_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Then the architecture, with three separate networks, and the security design.",
+  "tts": "Then the architecture, with three separate networks, and the security design."
+ },
+ {
+  "id": "s01_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Then the tools: pgBackRest for backups, the daily restore drill, and the monitoring with Prometheus and Grafana.",
+  "tts": "Then the tools: P-G back-rest for backups, the daily restore drill, and the monitoring with Prometheus and Grafana."
+ },
+ {
+  "id": "s01_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Next, five real disasters, each one measured: a dropped table, a storage outage, bit rot, a lost encryption key, and a lost database disk. And the tests that repeat all of them on every push.",
+  "tts": "Next, five real disasters, each one measured: a dropped table, a storage outage, bit rot, a lost encryption key, and a lost database disk. And the tests that repeat all of them on every push."
+ },
+ {
+  "id": "s01_04",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "And finally, how to run the whole stack on your own laptop, and how to move it to AWS S3.",
+  "tts": "And finally, how to run the whole stack on your own laptop, and how to move it to A-W-S S-three."
+ },
+ {
+  "id": "s02_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Let us start with the problem. Backup jobs fail silently. A cron job stops working, and nobody reads the backup logs until the day they need them.",
+  "tts": "Let us start with the problem. Backup jobs fail silently. A cron job stops working, and nobody reads the backup logs until the day they need them."
+ },
+ {
+  "id": "s02_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "A nightly dump has no point in time recovery. It cannot undo a delete made at five past two. You either lose up to a day of data, or you keep the mistake.",
+  "tts": "A nightly dump has no point in time recovery. It cannot undo a delete made at five past two. You either lose up to a day of data, or you keep the mistake."
+ },
+ {
+  "id": "s02_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Ask a team how long a restore would take, and how much data they would lose. Those are the RTO and the RPO, and they usually have no measured answer.",
+  "tts": "Ask a team how long a restore would take, and how much data they would lose. Those are the R-T-O and the R-P-O, and they usually have no measured answer."
+ },
+ {
+  "id": "s02_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Often the backups live right next to the database. If an attacker or ransomware gets the database host, the backups go with it.",
+  "tts": "Often the backups live right next to the database. If an attacker or ransomware gets the database host, the backups go with it."
+ },
+ {
+  "id": "s02_04",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "And storage is never verified. A damaged file in object storage is only discovered on the day you need it.",
+  "tts": "And storage is never verified. A damaged file in object storage is only discovered on the day you need it."
+ },
+ {
+  "id": "s03_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Here is the idea. PostgreSQL writes every change into the write ahead log, the WAL, before it changes a table. Start with a full backup: a copy of the data files.",
+  "tts": "Here is the idea. Postgres writes every change into the write ahead log, the W-A-L, before it changes a table. Start with a full backup: a copy of the data files."
+ },
+ {
+  "id": "s03_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Then archive every piece of WAL to object storage as it is written. In this project that happens at least every sixty seconds.",
+  "tts": "Then archive every piece of W-A-L to object storage as it is written. In this project that happens at least every sixty seconds."
+ },
+ {
+  "id": "s03_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Now you can restore the full copy and replay the WAL up to any second you choose. For example, to four minutes and fifty nine seconds past two, one second before the accident. That is point in time recovery.",
+  "tts": "Now you can restore the full copy and replay the W-A-L up to any second you choose. For example, to four minutes and fifty nine seconds past two, one second before the accident. That is point in time recovery."
+ },
+ {
+  "id": "s03_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Two numbers describe how good this is. The RPO, how much data you can lose, is bounded by the sixty second archive interval. And the RTO, how long a restore takes, is something this project measures every single day.",
+  "tts": "Two numbers describe how good this is. The R-P-O, how much data you can lose, is bounded by the sixty second archive interval. And the R-T-O, how long a restore takes, is something this project measures every single day."
+ },
+ {
+  "id": "s04_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Here is the architecture. A small shop application writes orders all the time, so that data loss becomes measurable.",
+  "tts": "Here is the architecture. A small shop application writes orders all the time, so that data loss becomes measurable."
+ },
+ {
+  "id": "s04_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The database is PostgreSQL 18. It archives WAL through a dedicated backup host, over mutual TLS. The database itself holds no storage keys and no encryption passphrase.",
+  "tts": "The database is Postgres 18. It archives W-A-L through a dedicated backup host, over mutual T-L-S. The database itself holds no storage keys and no encryption passphrase."
+ },
+ {
+  "id": "s04_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The backup host owns the pgBackRest repository in S3 compatible object storage. In the lab that is SeaweedFS, and in production you swap in AWS S3.",
+  "tts": "The backup host owns the P-G back-rest repository in S-three compatible object storage. In the lab that is Seaweed F-S, and in production you swap in A-W-S S-three."
+ },
+ {
+  "id": "s04_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The backup host also runs the schedule, the verification and the restore drills, and publishes every result to Prometheus. Grafana shows it on one dashboard.",
+  "tts": "The backup host also runs the schedule, the verification and the restore drills, and publishes every result to Prometheus. Grafana shows it on one dashboard."
+ },
+ {
+  "id": "s04_04",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "And there are three separate networks. The database and the application are not on the storage network at all. So even a fully compromised database host cannot read, change or delete its own backups.",
+  "tts": "And there are three separate networks. The database and the application are not on the storage network at all. So even a fully compromised database host cannot read, change or delete its own backups."
+ },
+ {
+  "id": "s05_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "This is defence in depth. First, every backup and WAL file is encrypted at rest with AES 256. The test searches the raw files for order data, and finds none.",
+  "tts": "This is defence in depth. First, every backup and W-A-L file is encrypted at rest with A-E-S two fifty-six. The test searches the raw files for order data, and finds none."
+ },
+ {
+  "id": "s05_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Second, separation of duties. The storage credentials and the encryption passphrase only exist on the backup host, never on the database.",
+  "tts": "Second, separation of duties. The storage credentials and the encryption passphrase only exist on the backup host, never on the database."
+ },
+ {
+  "id": "s05_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Third, network isolation, as we just saw.",
+  "tts": "Third, network isolation, as we just saw."
+ },
+ {
+  "id": "s05_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "And fourth, mutual TLS between the database and the backup host, with certificates from a private certificate authority whose key is kept out of every container.",
+  "tts": "And fourth, mutual T-L-S between the database and the backup host, with certificates from a private certificate authority whose key is kept out of every container."
+ },
+ {
+  "id": "s06_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The backup tool is pgBackRest, pinned to version 2.59. It does parallel, encrypted and block incremental backups, with asynchronous WAL archiving.",
+  "tts": "The backup tool is P-G back-rest, pinned to version two point fifty-nine. It does parallel, encrypted and block incremental backups, with asynchronous W-A-L archiving."
+ },
+ {
+  "id": "s06_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The database is configured with archive mode on, and an archive command. For every finished WAL segment, PostgreSQL calls pgBackRest, which pushes it through the backup host into the repository.",
+  "tts": "The database is configured with archive mode on, and an archive command. For every finished W-A-L segment, Postgres calls P-G back-rest, which pushes it through the backup host into the repository."
+ },
+ {
+  "id": "s06_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Archive timeout sixty forces a new WAL segment at least every sixty seconds, even when the shop is quiet. That is what bounds the data loss.",
+  "tts": "Archive timeout sixty forces a new W-A-L segment at least every sixty seconds, even when the shop is quiet. That is what bounds the data loss."
+ },
+ {
+  "id": "s06_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "And notice the networks line: the database is only on the data network.",
+  "tts": "And notice the networks line: the database is only on the data network."
+ },
+ {
+  "id": "s07_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The backup host runs a schedule. A full backup every Sunday, a differential every other day, and an incremental every hour. So a restore needs one full, one differential, a few incrementals and the WAL.",
+  "tts": "The backup host runs a schedule. A full backup every Sunday, a differential every other day, and an incremental every hour. So a restore needs one full, one differential, a few incrementals and the W-A-L."
+ },
+ {
+  "id": "s07_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Every night, verify reads every single file in the repository and checks its checksum. That is how bit rot is found early.",
+  "tts": "Every night, verify reads every single file in the repository and checks its checksum. That is how bit rot is found early."
+ },
+ {
+  "id": "s07_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Then the restore drill, the heart of the project.",
+  "tts": "Then the restore drill, the heart of the project."
+ },
+ {
+  "id": "s07_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Every minute, the repository state is exported for the dashboard. The scheduler is supercronic, a cron built for containers, pinned by its SHA 256 checksum.",
+  "tts": "Every minute, the repository state is exported for the dashboard. The scheduler is supercronic, a cron built for containers, pinned by its shah two fifty-six checksum."
+ },
+ {
+  "id": "s08_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Here is the restore drill. First, it reads the newest order in the live database, with two read only queries. That is the point the copy should get back to.",
+  "tts": "Here is the restore drill. First, it reads the newest order in the live database, with two read only queries. That is the point the copy should get back to."
+ },
+ {
+  "id": "s08_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Then it restores the latest backup, plus all the archived WAL, from S3 into a scratch directory on the backup host.",
+  "tts": "Then it restores the latest backup, plus all the archived W-A-L, from S-three into a scratch directory on the backup host."
+ },
+ {
+  "id": "s08_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "It starts that copy as a completely separate PostgreSQL, on another port, with no network and no WAL archiving, so it can never interfere with production.",
+  "tts": "It starts that copy as a completely separate Postgres, on another port, with no network and no W-A-L archiving, so it can never interfere with production."
+ },
+ {
+  "id": "s08_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Then it checks the copy: are any orders missing, how far behind the live database is the newest restored order, and does amcheck find any corruption in the tables and indexes?",
+  "tts": "Then it checks the copy: are any orders missing, how far behind the live database is the newest restored order, and does am-check find any corruption in the tables and indexes?"
+ },
+ {
+  "id": "s08_04",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Finally it throws the copy away, and publishes the result: the measured restore time, the measured data loss, the row counts and the verdict.",
+  "tts": "Finally it throws the copy away, and publishes the result: the measured restore time, the measured data loss, the row counts and the verdict."
+ },
+ {
+  "id": "s09_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Here is a real drill from the logs. It notes the newest live order.",
+  "tts": "Here is a real drill from the logs. It notes the newest live order."
+ },
+ {
+  "id": "s09_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "pgBackRest restores the latest backup set, 30 megabytes in 1274 files, in under four seconds.",
+  "tts": "P-G back-rest restores the latest backup set, 30 megabytes in twelve hundred and seventy-four files, in under four seconds."
+ },
+ {
+  "id": "s09_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The copy has 111 orders, none missing, and its newest order is only one second older than the live database. That one second is the measured data loss.",
+  "tts": "The copy has one hundred and eleven orders, none missing, and its newest order is only one second older than the live database. That one second is the measured data loss."
+ },
+ {
+  "id": "s09_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The whole drill passed in six seconds. On a production size database this takes longer, and an alert fires if it ever takes more than thirty minutes.",
+  "tts": "The whole drill passed in six seconds. On a production size database this takes longer, and an alert fires if it ever takes more than thirty minutes."
+ },
+ {
+  "id": "s10_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Every job publishes its result to a Prometheus Pushgateway, and a postgres exporter reports the state of the WAL archiver. The dashboard answers one question first: can we restore right now?",
+  "tts": "Every job publishes its result to a Prometheus Pushgateway, and a postgres exporter reports the state of the W-A-L archiver. The dashboard answers one question first: can we restore right now?"
+ },
+ {
+  "id": "s10_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "At the top: the last drill's result, the measured restore time and data loss, missing orders, and the repository verification. Below: the age of each backup type, firing alerts, the repository size, WAL archiving and the drill history.",
+  "tts": "At the top: the last drill's result, the measured restore time and data loss, missing orders, and the repository verification. Below: the age of each backup type, firing alerts, the repository size, W-A-L archiving and the drill history."
+ },
+ {
+  "id": "s11_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "There are eleven alert rules, one for every way backups can silently stop working. Two watch the WAL archive: failing, or stale.",
+  "tts": "There are eleven alert rules, one for every way backups can silently stop working. Two watch the W-A-L archive: failing, or stale."
+ },
+ {
+  "id": "s11_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Four watch the backups: a failed backup, a backup or full backup that is too old, and a repository that cannot be read.",
+  "tts": "Four watch the backups: a failed backup, a backup or full backup that is too old, and a repository that cannot be read."
+ },
+ {
+  "id": "s11_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "One watches integrity: a failed verification.",
+  "tts": "One watches integrity: a failed verification."
+ },
+ {
+  "id": "s11_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "And four watch the drills: a failed drill, a missing drill, a restore slower than thirty minutes, and data loss above five minutes. Every rule has a unit test with prom tool.",
+  "tts": "And four watch the drills: a failed drill, a missing drill, a restore slower than thirty minutes, and data loss above five minutes. Every rule has a unit test with prom-tool."
+ },
+ {
+  "id": "s12_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Now the results, from one clean run of the end to end test. From an empty machine to a running stack with its first full backup took 68 seconds.",
+  "tts": "Now the results, from one clean run of the end to end test. From an empty machine to a running stack with its first full backup took 68 seconds."
+ },
+ {
+  "id": "s12_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "A dropped table was undone in ten seconds, with every order from before the accident back.",
+  "tts": "A dropped table was undone in ten seconds, with every order from before the accident back."
+ },
+ {
+  "id": "s12_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "A storage outage of about three and a half minutes lost zero orders.",
+  "tts": "A storage outage of about three and a half minutes lost zero orders."
+ },
+ {
+  "id": "s12_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "A silently damaged backup file was caught by verification and by the drill.",
+  "tts": "A silently damaged backup file was caught by verification and by the drill."
+ },
+ {
+  "id": "s12_04",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "A wrong encryption passphrase made nothing restorable, and the alert said so.",
+  "tts": "A wrong encryption passphrase made nothing restorable, and the alert said so."
+ },
+ {
+  "id": "s12_05",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "And a deleted database volume was rebuilt from the backups in sixteen seconds. Let us look at each one.",
+  "tts": "And a deleted database volume was rebuilt from the backups in sixteen seconds. Let us look at each one."
+ },
+ {
+  "id": "s13_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Disaster one: someone drops the orders table. At that moment, 123 orders existed.",
+  "tts": "Disaster one: someone drops the orders table. At that moment, one hundred and twenty-three orders existed."
+ },
+ {
+  "id": "s13_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "One command, pitr dot S-H, with a target time one second before the accident. pgBackRest uses a delta restore, so it only replaces the files that differ, in a third of a second.",
+  "tts": "One command, P-I-T-R dot S-H, with a target time one second before the accident. P-G back-rest uses a delta restore, so it only replaces the files that differ, in a third of a second."
+ },
+ {
+  "id": "s13_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "PostgreSQL replays the WAL up to the target, and the database is back in service in ten seconds, on a new timeline, timeline two.",
+  "tts": "Postgres replays the W-A-L up to the target, and the database is back in service in ten seconds, on a new timeline, timeline two."
+ },
+ {
+  "id": "s13_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "All 123 orders from before the accident are back, and nothing from after the target. The app starts writing again, and a new full backup and drill pass.",
+  "tts": "All one hundred and twenty-three orders from before the accident are back, and nothing from after the target. The app starts writing again, and a new full backup and drill pass."
+ },
+ {
+  "id": "s14_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Disaster two: the object storage goes down for about three and a half minutes. The database keeps accepting orders. WAL archiving fails eight times, and the segments wait in a queue.",
+  "tts": "Disaster two: the object storage goes down for about three and a half minutes. The database keeps accepting orders. W-A-L archiving fails eight times, and the segments wait in a queue."
+ },
+ {
+  "id": "s14_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The WAL archiving failing alert fired after 198 seconds.",
+  "tts": "The W-A-L archiving failing alert fired after one hundred and ninety-eight seconds."
+ },
+ {
+  "id": "s14_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "When the storage came back, the archive caught up within 35 seconds.",
+  "tts": "When the storage came back, the archive caught up within 35 seconds."
+ },
+ {
+  "id": "s14_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The next incremental backup worked, and the next drill found zero missing orders.",
+  "tts": "The next incremental backup worked, and the next drill found zero missing orders."
+ },
+ {
+  "id": "s15_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Disaster three is the scary one: bit rot. The test overwrites four kilobytes inside one backup file, keeping the same size, so nothing looks wrong from the outside.",
+  "tts": "Disaster three is the scary one: bit rot. The test overwrites four kilobytes inside one backup file, keeping the same size, so nothing looks wrong from the outside."
+ },
+ {
+  "id": "s15_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The nightly verification reads every file and checks its checksum: one invalid checksum, in exactly that backup.",
+  "tts": "The nightly verification reads every file and checks its checksum: one invalid checksum, in exactly that backup."
+ },
+ {
+  "id": "s15_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The drill fails too, as it should, and two alerts fire: backup verify failed, and restore drill failed.",
+  "tts": "The drill fails too, as it should, and two alerts fire: backup verify failed, and restore drill failed."
+ },
+ {
+  "id": "s15_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "When the original file is put back, verification and the drill pass again. You learn about the damage on a normal morning, not during an incident.",
+  "tts": "When the original file is put back, verification and the drill pass again. You learn about the damage on a normal morning, not during an incident."
+ },
+ {
+  "id": "s16_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Disaster four: the encryption passphrase is wrong, or lost. Nothing can be restored, the drill fails, and the restore drill failed alert fires. That is exactly what you want to know before the day you need the backup. So keep the passphrase in a vault, outside the server.",
+  "tts": "Disaster four: the encryption passphrase is wrong, or lost. Nothing can be restored, the drill fails, and the restore drill failed alert fires. That is exactly what you want to know before the day you need the backup. So keep the passphrase in a vault, outside the server."
+ },
+ {
+  "id": "s16_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "With the right passphrase back, the drill passes and the alert resolves.",
+  "tts": "With the right passphrase back, the drill passes and the alert resolves."
+ },
+ {
+  "id": "s16_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Disaster five: the database volume is deleted, as if the disk died. One command rebuilds the database from the backups, in sixteen seconds, with every archived order back.",
+  "tts": "Disaster five: the database volume is deleted, as if the disk died. One command rebuilds the database from the backups, in sixteen seconds, with every archived order back."
+ },
+ {
+  "id": "s16_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "And one more safety check: when an empty database was started by mistake, the repository refused its WAL, because the system identifier did not match. A new database can never overwrite the old backups.",
+  "tts": "And one more safety check: when an empty database was started by mistake, the repository refused its W-A-L, because the system identifier did not match. A new database can never overwrite the old backups."
+ },
+ {
+  "id": "s17_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The security design is tested too. The database and the application cannot even resolve the storage host name. Only the backup host can reach it.",
+  "tts": "The security design is tested too. The database and the application cannot even resolve the storage host name. Only the backup host can reach it."
+ },
+ {
+  "id": "s17_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The raw backup files are searched for order data: zero readable order strings.",
+  "tts": "The raw backup files are searched for order data: zero readable order strings."
+ },
+ {
+  "id": "s17_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The database's own pgBackRest configuration contains zero storage keys and zero passphrases.",
+  "tts": "The database's own P-G back-rest configuration contains zero storage keys and zero passphrases."
+ },
+ {
+  "id": "s17_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "And the storage without credentials answers 403, forbidden.",
+  "tts": "And the storage without credentials answers 403, forbidden."
+ },
+ {
+  "id": "s18_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "All of this runs in GitHub Actions, on every push and every week. First, static checks: ShellCheck, yamllint, ruff, seven pytest tests, hadolint for the Dockerfile, and unit tests for the alert rules.",
+  "tts": "All of this runs in GitHub Actions, on every push and every week. First, static checks: ShellCheck, YAML lint, ruff, seven pie-test tests, hado-lint for the Dockerfile, and unit tests for the alert rules."
+ },
+ {
+  "id": "s18_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Second, the image is scanned with Trivy. It found a vulnerable gosu binary in the PostgreSQL base image, with one critical and 21 high vulnerabilities. It was replaced with a small shim, and the scan is now clean.",
+  "tts": "Second, the image is scanned with Trivy. It found a vulnerable go-sue binary in the Postgres base image, with one critical and 21 high vulnerabilities. It was replaced with a small shim, and the scan is now clean."
+ },
+ {
+  "id": "s18_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Third, the end to end test, with eleven sections: every disaster you just saw, in one run. The clean run took 898 seconds, and every section passed.",
+  "tts": "Third, the end to end test, with eleven sections: every disaster you just saw, in one run. The clean run took eight hundred and ninety-eight seconds, and every section passed."
+ },
+ {
+  "id": "s18_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "And the same test passed in CI, on a fresh GitHub runner. There, the first backup took 62 seconds, the recovery brought back 108 of 108 orders in 17 seconds, the outage lost nothing, and the lost volume was rebuilt in 20 seconds.",
+  "tts": "And the same test passed in C-I, on a fresh GitHub runner. There, the first backup took 62 seconds, the recovery brought back one hundred and eight of one hundred and eight orders in 17 seconds, the outage lost nothing, and the lost volume was rebuilt in 20 seconds."
+ },
+ {
+  "id": "s19_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The tests found four real problems. The unit tests found that the WAL segment metric lost precision, because the timeline was shifted into bits a float cannot hold exactly.",
+  "tts": "The tests found four real problems. The unit tests found that the W-A-L segment metric lost precision, because the timeline was shifted into bits a float cannot hold exactly."
+ },
+ {
+  "id": "s19_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The alert rule tests found that one alert summary showed the wrong value, and another printed fractional failure counts.",
+  "tts": "The alert rule tests found that one alert summary showed the wrong value, and another printed fractional failure counts."
+ },
+ {
+  "id": "s19_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "And Trivy found the vulnerable gosu binary.",
+  "tts": "And Trivy found the vulnerable go-sue binary."
+ },
+ {
+  "id": "s19_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "And to be honest about what was not tested: the lab database is about 30 megabytes, the lab uses SeaweedFS instead of real cloud S3, and high availability is out of scope.",
+  "tts": "And to be honest about what was not tested: the lab database is about 30 megabytes, the lab uses Seaweed F-S instead of real cloud S-three, and high availability is out of scope."
+ },
+ {
+  "id": "s20_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Now let us make it practical. You need Docker with Compose, Bash and OpenSSL. Git Bash on Windows works. And about two gigabytes of disk and memory. Clone the repository and go into the folder.",
+  "tts": "Now let us make it practical. You need Docker with Compose, Bash and OpenSSL. Git Bash on Windows works. And about two gigabytes of disk and memory. Clone the repository and go into the folder."
+ },
+ {
+  "id": "s20_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Up dot S-H creates the secrets and the certificates, starts everything, and waits for the first full backup. That takes about a minute.",
+  "tts": "Up dot S-H creates the secrets and the certificates, starts everything, and waits for the first full backup. That takes about a minute."
+ },
+ {
+  "id": "s20_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Status shows what is in the repository and the result of the last drill. Drill runs a restore drill right now, and backup takes a full, differential or incremental backup.",
+  "tts": "Status shows what is in the repository and the result of the last drill. Drill runs a restore drill right now, and backup takes a full, differential or incremental backup."
+ },
+ {
+  "id": "s20_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "And now the fun part: drop a table yourself, and undo it with pitr dot S-H and a time stamp. Or delete the database volume, and rebuild it with recover lost D-B.",
+  "tts": "And now the fun part: drop a table yourself, and undo it with P-I-T-R dot S-H and a time stamp. Or delete the database volume, and rebuild it with recover lost D-B."
+ },
+ {
+  "id": "s20_04",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Grafana runs on localhost port 3000, and Prometheus on 9090. The whole proof, with every disaster, is scripts slash E-2-E dot S-H, about fifteen minutes. And down dot S-H stops everything.",
+  "tts": "Grafana runs on localhost port 3000, and Prometheus on port ninety ninety. The whole proof, with every disaster, is scripts slash E-2-E dot S-H, about fifteen minutes. And down dot S-H stops everything."
+ },
+ {
+  "id": "s21_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Moving to production is a configuration change. Point the S3 endpoint at your AWS region, use port 443 and host style addressing, and remove the lab's storage container.",
+  "tts": "Moving to production is a configuration change. Point the S-three endpoint at your A-W-S region, use port 443 and host style addressing, and remove the lab's storage container."
+ },
+ {
+  "id": "s21_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Put the IAM keys into the secrets folder, or better, let pgBackRest use an instance role.",
+  "tts": "Put the I-A-M keys into the secrets folder, or better, let P-G back-rest use an instance role."
+ },
+ {
+  "id": "s21_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Protect the bucket with Object Lock or versioning, so deleted or overwritten backups can be recovered.",
+  "tts": "Protect the bucket with Object Lock or versioning, so deleted or overwritten backups can be recovered."
+ },
+ {
+  "id": "s21_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Keep the encryption passphrase in a password manager or a vault, outside the server. You saw what happens without it.",
+  "tts": "Keep the encryption passphrase in a password manager or a vault, outside the server. You saw what happens without it."
+ },
+ {
+  "id": "s21_04",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "And route the alerts to your on call channel. The drill result on the dashboard is the first thing to check every morning.",
+  "tts": "And route the alerts to your on call channel. The drill result on the dashboard is the first thing to check every morning."
+ },
+ {
+  "id": "s22_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Let us be honest about the limits. This is a single database server. High availability, with replicas and failover, is a separate concern.",
+  "tts": "Let us be honest about the limits. This is a single database server. High availability, with replicas and failover, is a separate concern."
+ },
+ {
+  "id": "s22_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The lab's object storage is one container. Production needs durable storage, ideally off site and versioned or immutable.",
+  "tts": "The lab's object storage is one container. Production needs durable storage, ideally off site and versioned or immutable."
+ },
+ {
+  "id": "s22_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The drill restores onto the backup host. For very large databases, run it on a dedicated drill server with enough disk.",
+  "tts": "The drill restores onto the backup host. For very large databases, run it on a dedicated drill server with enough disk."
+ },
+ {
+  "id": "s22_03",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "And next on the list: a second repository in another region for three two one backups, Object Lock, alert routing with Alertmanager, and a Kubernetes version with CloudNativePG and the same drill.",
+  "tts": "And next on the list: a second repository in another region for three two one backups, Object Lock, alert routing with Alertmanager, and a Kubernetes version with Cloud Native P-G and the same drill."
+ },
+ {
+  "id": "s23_00",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "That is the project. A backup is only real once it has been restored, and this setup restores one every single day, measures how long it takes and how much data it would lose, and alerts when anything is wrong.",
+  "tts": "That is the project. A backup is only real once it has been restored, and this setup restores one every single day, measures how long it takes and how much data it would lose, and alerts when anything is wrong."
+ },
+ {
+  "id": "s23_01",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "The code, the documentation and a free study guide, with hands-on labs and interview questions, are linked in the description. Clone it, run up dot S-H, and try to break it.",
+  "tts": "The code, the documentation and a free study guide, with hands-on labs and interview questions, are linked in the description. Clone it, run up dot S-H, and try to break it."
+ },
+ {
+  "id": "s23_02",
+  "who": "narrator",
+  "voice": "Steve",
+  "text": "Now I would like to hear from you: when did you last restore one of your backups? Tell me in the comments. And if this helped, subscribe for more real DevOps projects. Thanks for watching.",
+  "tts": "Now I would like to hear from you: when did you last restore one of your backups? Tell me in the comments. And if this helped, subscribe for more real DevOps projects. Thanks for watching."
+ }
+]
